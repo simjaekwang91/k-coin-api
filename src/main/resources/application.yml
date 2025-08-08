@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: k-coin-api
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/kcoin_db
+    username: kcoin
+    password: kcoinpass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:/db/coin-schema.sql
+      data-locations: classpath:/db/init-data.sql

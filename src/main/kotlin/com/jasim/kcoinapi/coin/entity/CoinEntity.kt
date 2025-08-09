@@ -70,10 +70,10 @@ class CoinEntity(
         protected set
 
     fun issueCoin() {
-        check(remainCoinCount > 0 && totalCoinCount > 0) {
+        if (remainCoinCount <= 0) {
             throw CoinException(CoinErrorType.OUT_OF_STOCK_COIN)
         }
 
-        remainCoinCount--
+        remainCoinCount = remainCoinCount - perIssueCount
     }
 }

@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS event (
                        starts_at DATETIME NOT NULL,
                        ends_at DATETIME NOT NULL,
                        created_at DATETIME NOT NULL,
-                       updated_at DATETIME NOT NULL
+                       updated_at DATETIME NOT NULL,
+                       INDEX idx_event_time (starts_at, ends_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS event_entry (
@@ -17,7 +18,8 @@ CREATE TABLE IF NOT EXISTS event_entry (
                              reward_id BIGINT NOT NULL,
                              status ENUM('ISSUE','ENTERED','CANCELLED') NOT NULL,
                              created_at DATETIME NOT NULL,
-                             updated_at DATETIME NOT NULL
+                             updated_at DATETIME NOT NULL,
+                             UNIQUE KEY uq_reward_user (reward_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS reward (
@@ -27,7 +29,8 @@ CREATE TABLE IF NOT EXISTS reward (
                         winning_quota INT NOT NULL,
                         required_coins INT NOT NULL,
                         created_at DATETIME NOT NULL,
-                        updated_at DATETIME NOT NULL
+                        updated_at DATETIME NOT NULL,
+                        INDEX idx_reward_event (event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS coin (
@@ -38,7 +41,8 @@ CREATE TABLE IF NOT EXISTS coin (
                       total_coin_count INT NOT NULL,
                       remain_coin_count INT NOT NULL,
                       created_at DATETIME NOT NULL,
-                      updated_at DATETIME NOT NULL
+                      updated_at DATETIME NOT NULL,
+                      INDEX idx_coin_event (event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS user_coin (
@@ -48,7 +52,9 @@ CREATE TABLE IF NOT EXISTS user_coin (
                            balance INT NOT NULL,
                            acquired_total INT NOT NULL,
                            created_at DATETIME NOT NULL,
-                           updated_at DATETIME NOT NULL
+                           updated_at DATETIME NOT NULL,
+                           UNIQUE KEY uq_user_coin (user_id, coin_id),
+                           INDEX idx_user_coin_coin (coin_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS coin_log (
@@ -56,9 +62,13 @@ CREATE TABLE IF NOT EXISTS coin_log (
                           user_id BIGINT NOT NULL,
                           coin_id BIGINT NOT NULL,
                           amount INT NOT NULL,
-                          reason VARCHAR(20) NOT NULL,              -- 'ACQUIRE', 'ENTER', 'CANCEL'
+                          reason VARCHAR(20) NOT NULL,
                           event_entry_id BIGINT NULL,
                           created_at DATETIME NOT NULL,
-                          updated_at DATETIME NOT NULL
+                          updated_at DATETIME NOT NULL,
+                          INDEX idx_coin_log_coin (coin_id),
+                          INDEX idx_coin_log_user (user_id),
+                          INDEX idx_coin_log_event_entry (event_entry_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 

@@ -35,7 +35,7 @@ class CoinLogEntity(
         protected set
 
     @Column(name = "amount")
-    var amount: Int = pAmount
+    var useAmount: Int = pAmount
         protected set
 
     @Column(name = "reason")

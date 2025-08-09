@@ -59,7 +59,7 @@ class CoinLogRepositoryTest (
             .isEqualTo(userId)
         assertThat(find.coinId)
             .isEqualTo(coinId)
-        assertThat(find.amount)
+        assertThat(find.useAmount)
             .isEqualTo(amount)
         assertThat(find.reason)
             .isEqualTo(reason)

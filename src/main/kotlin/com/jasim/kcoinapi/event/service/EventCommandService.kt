@@ -1,9 +1,7 @@
 package com.jasim.kcoinapi.event.service
 
 interface EventCommandService {
-    //휴가 쿠폰 응모
-    fun entryReward(rewardId: Long, userId: String)
-    //휴가 쿠폰 응모 취소
-    fun cancelReward(rewardId: Long, userId: String)
-
+    //휴가 쿠폰 응모 OR 취소
+    //status 0 응모 1 취소
+    fun setReward(eventId: Long, rewardId: Long, userId: String, status: Int): Boolean
 }

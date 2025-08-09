@@ -1,6 +1,8 @@
 package com.jasim.kcoinapi.coin.entity
 
 import com.jasim.kcoinapi.common.entity.embeddable.Audit
+import com.jasim.kcoinapi.exception.CoinException
+import com.jasim.kcoinapi.exception.CoinException.CoinErrorType
 import jakarta.persistence.Column
 import jakarta.persistence.ConstraintMode
 import jakarta.persistence.Embedded
@@ -59,16 +61,24 @@ class UserCoinEntity(
         acquiredTotal++
     }
 
-    fun entryCoin() {
-        check(balance > 0 && acquiredTotal > 0) {
-            "잔여 코인이 없습니다."
+    fun entryCoin(requireCoinCount: Int) {
+        if (balance < requireCoinCount) {
+            throw CoinException(CoinErrorType.NOT_ENOUGH_COIN)
         }
 
-        balance--
+        if (balance <= 0) {
+            throw CoinException(CoinErrorType.OUT_OF_STOCK_USER_COIN)
+        }
+
+        balance = balance - requireCoinCount
     }
 
-    fun cancelCoin() {
-        balance++
+    fun cancelCoin(requireCoinCount: Int) {
+        if ((balance + requireCoinCount) > acquiredTotal) {
+            throw CoinException(CoinErrorType.NO_MORE_TOTAL_COIN)
+        }
+
+        balance = balance + requireCoinCount
     }
 
 }

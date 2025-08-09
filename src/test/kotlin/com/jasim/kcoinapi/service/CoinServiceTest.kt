@@ -83,11 +83,10 @@ class CoinCommandConcurrencyTest {
             pEvent = event,
         )
 
+        this.coin = coinRepository.saveAndFlush(coin)
 
         userCoinInfo1 = userCoinRepository.save(UserCoinEntity("u1", pBalance = 2, pAcquiredTotal = 3, pCoinInfo = coin))
         userCoinInfo2 = userCoinRepository.save(UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 1, pCoinInfo = coin))
-
-        this.coin = coinRepository.saveAndFlush(coin)
     }
 
     @Test

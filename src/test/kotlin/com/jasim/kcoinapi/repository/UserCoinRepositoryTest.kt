@@ -6,6 +6,7 @@ import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
 import com.jasim.kcoinapi.event.entity.EventEntity
 import com.jasim.kcoinapi.event.repository.EventRepository
+import com.jasim.kcoinapi.exception.CoinException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.BeforeEach
@@ -81,7 +82,7 @@ class UserCoinRepositoryTest() {
         val persisted = userCoinRepository.saveAndFlush(baseEntity)
 
         // when
-        persisted.entryCoin()
+        persisted.entryCoin(1)
 
         // then
         val found = userCoinRepository.findById(persisted.id!!).get()
@@ -93,15 +94,10 @@ class UserCoinRepositoryTest() {
     @DisplayName("entryCoin(): balance 또는 acquiredTotal이 0 이면 예외 발생")
     fun `보유코인 및 사용가능 코인 유효성 동작 테스트`() {
         //given
-        val uc1 = userCoinRepository.saveAndFlush(
-            UserCoinEntity("u1", pBalance = 0, pAcquiredTotal = 1, pCoinInfo = coinEntity)
-        )
-        assertThrows<IllegalStateException> { uc1.entryCoin() }
-
         val uc2 = userCoinRepository.saveAndFlush(
-            UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 0, pCoinInfo = coinEntity)
+            UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 3, pCoinInfo = coinEntity)
         )
-        assertThrows<IllegalStateException> { uc2.entryCoin() }
+        assertThrows<CoinException> { uc2.entryCoin(2) }
     }
 
     @Test
@@ -111,7 +107,7 @@ class UserCoinRepositoryTest() {
         val persisted = userCoinRepository.saveAndFlush(baseEntity)
 
         // when
-        persisted.cancelCoin()
+        persisted.cancelCoin(1)
         // then
         val found = userCoinRepository.findById(persisted.id!!).get()
         assertThat(found.balance).isEqualTo(3)

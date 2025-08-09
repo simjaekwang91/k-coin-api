@@ -1,6 +1,8 @@
 package com.jasim.kcoinapi.event.entity
 
 import com.jasim.kcoinapi.common.entity.embeddable.Audit
+import com.jasim.kcoinapi.exception.EventException
+import com.jasim.kcoinapi.exception.EventException.EventErrorType
 import jakarta.persistence.Column
 import jakarta.persistence.ConstraintMode
 import jakarta.persistence.Embedded
@@ -23,6 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 @EntityListeners(AuditingEntityListener::class)
 class EventEntryEntity(
     pUserId: String,
+    pEntryStatus: EntryStatus,
+    pReward: RewardEntity,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,19 +42,28 @@ class EventEntryEntity(
         name = "reward_id",
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
-    var reward: RewardEntity? = null
+    var reward: RewardEntity = pReward
         protected set
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    var status: EntryStatus = EntryStatus.ENTERED
+    var status: EntryStatus = pEntryStatus
         protected set
 
     @Embedded
     var audit: Audit = Audit()
         protected set
 
-    enum class EntryStatus { ENTERED, CANCELLED }
+    enum class EntryStatus(val code: Int) {
+        ENTERED(0),
+        CANCELLED(1);
+
+        companion object {
+            fun fromCode(code: Int): EntryStatus =
+                entries.find { it.code == code }
+                    ?: throw EventException(EventErrorType.NOT_FOUND_TYPE)
+        }
+    }
 
     fun cancel() {
         status = EntryStatus.CANCELLED

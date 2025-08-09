@@ -24,7 +24,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 class RewardEntity(
     pRewardName: String,
     pWinningQuota: Int,
-    pRequiredCoins: Int
+    pRequiredCoins: Int,
+    pEvent: EventEntity
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +37,8 @@ class RewardEntity(
         name = "event_id",
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
-    var event: EventEntity? = null
+    var event: EventEntity = pEvent
+        protected set
 
     @OneToMany(
         mappedBy = "reward",

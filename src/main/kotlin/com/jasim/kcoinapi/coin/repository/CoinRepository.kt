@@ -4,4 +4,5 @@ import com.jasim.kcoinapi.coin.entity.CoinEntity
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface CoinRepository: JpaRepository<CoinEntity, Long> {
+    fun findByEventId(eventId: Long): CoinEntity?
 }

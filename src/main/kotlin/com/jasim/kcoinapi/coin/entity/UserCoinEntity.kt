@@ -22,7 +22,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 class UserCoinEntity(
     pUserId: String,
     pBalance: Int,
-    pAcquiredTotal: Int
+    pAcquiredTotal: Int,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +36,6 @@ class UserCoinEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "coin_id",
-        insertable = false,
-        updatable = false,
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
     var coin: CoinEntity? = null

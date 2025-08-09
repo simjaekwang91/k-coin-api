@@ -20,3 +20,5 @@ INSERT IGNORE INTO coin (
 ) VALUES
     (1, 1, 3, 900, 900, NOW(), NOW());
 
+INSERT IGNORE INTO process_lock(lock_key) VALUES ('global');
+

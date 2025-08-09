@@ -32,7 +32,7 @@ class UserCoinRepositoryTest() {
 
     @Test
     @DisplayName("저장 시 기본 필드 및 Audit(created/updated) 자동 설정 확인")
-    fun `audit 타임스탬프 체크`() {
+    fun `저장_조회_테스트`() {
         // given
         val before = Instant.now()
 

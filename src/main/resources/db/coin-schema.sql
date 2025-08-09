@@ -1,3 +1,7 @@
+CREATE TABLE IF NOT EXISTS process_lock (
+                                            lock_key VARCHAR(64) PRIMARY KEY
+    ) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS event (
                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
                        event_name VARCHAR(50) NOT NULL,
@@ -11,7 +15,7 @@ CREATE TABLE IF NOT EXISTS event_entry (
                              id BIGINT AUTO_INCREMENT PRIMARY KEY,
                              user_id BIGINT NOT NULL,
                              reward_id BIGINT NOT NULL,
-                             status ENUM('ENTERED','CANCELLED') NOT NULL DEFAULT 'ENTERED',
+                             status ENUM('ISSUE','ENTERED','CANCELLED') NOT NULL,
                              created_at DATETIME NOT NULL,
                              updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -30,6 +34,7 @@ CREATE TABLE IF NOT EXISTS coin (
                       id BIGINT AUTO_INCREMENT PRIMARY KEY,
                       event_id BIGINT NOT NULL,
                       per_user_limit INT NOT NULL,
+                      per_issue_count INT NOT NULL,
                       total_coin_count INT NOT NULL,
                       remain_coin_count INT NOT NULL,
                       created_at DATETIME NOT NULL,

@@ -18,7 +18,7 @@ class CoinLogEntity(
     pUserId: String,
     pCoinId: Long,
     pAmount: Int,
-    pReason: String,
+    pReason: Reason,
     pEventEntryId: Long? = null
 ) {
     @Id
@@ -39,7 +39,7 @@ class CoinLogEntity(
         protected set
 
     @Column(name = "reason")
-    var reason: String = pReason
+    var reason: Reason = pReason
         protected set
 
     @Column(name = "event_entry_id")
@@ -49,4 +49,10 @@ class CoinLogEntity(
     @Embedded
     var audit: Audit = Audit()
         protected set
+
+    enum class Reason(val code: Int) {
+        ISSUE(0),
+        ENTERED(1),
+        CANCELLED(2)
+    }
 }

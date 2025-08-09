@@ -35,8 +35,6 @@ class CoinEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "event_id",
-        insertable = false,
-        updatable = false,
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
     var event: EventEntity? = null
@@ -52,6 +50,9 @@ class CoinEntity(
     @Column(name = "per_user_limit")
     var perUserLimit: Int = pPerUserLimit
         protected set
+
+    @Column(name = "per_issue_count")
+    var perIssueCount: Int = 1
 
     @Column(name = "total_coin_count")
     var totalCoinCount: Int = pTotalCoinCount

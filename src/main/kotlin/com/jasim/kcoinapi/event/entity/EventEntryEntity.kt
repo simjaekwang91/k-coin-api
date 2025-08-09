@@ -36,8 +36,6 @@ class EventEntryEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "reward_id",
-        insertable = false,
-        updatable = false,
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
     var reward: RewardEntity? = null

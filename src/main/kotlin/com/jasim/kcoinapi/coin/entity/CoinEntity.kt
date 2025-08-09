@@ -2,6 +2,8 @@ package com.jasim.kcoinapi.coin.entity
 
 import com.jasim.kcoinapi.event.entity.EventEntity
 import com.jasim.kcoinapi.common.entity.embeddable.Audit
+import com.jasim.kcoinapi.exception.CoinException
+import com.jasim.kcoinapi.exception.CoinException.CoinErrorType
 import jakarta.persistence.Column
 import jakarta.persistence.ConstraintMode
 import jakarta.persistence.Embedded
@@ -25,7 +27,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 class CoinEntity(
     pPerUserLimit: Int,
     pTotalCoinCount: Int,
-    pRemainCoinCount: Int
+    pRemainCoinCount: Int,
+    pEvent: EventEntity
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,7 +40,7 @@ class CoinEntity(
         name = "event_id",
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
-    var event: EventEntity? = null
+    var event: EventEntity = pEvent
         protected set
 
     @OneToMany(
@@ -68,7 +71,7 @@ class CoinEntity(
 
     fun issueCoin() {
         check(remainCoinCount > 0 && totalCoinCount > 0) {
-            "남은 코인 수량이 없습니다."
+            throw CoinException(CoinErrorType.OUT_OF_STOCK_COIN)
         }
 
         remainCoinCount--

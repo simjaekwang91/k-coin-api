@@ -23,6 +23,7 @@ class UserCoinEntity(
     pUserId: String,
     pBalance: Int,
     pAcquiredTotal: Int,
+    pCoinInfo: CoinEntity
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +39,7 @@ class UserCoinEntity(
         name = "coin_id",
         foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
-    var coin: CoinEntity? = null
+    var coin: CoinEntity = pCoinInfo
         protected set
 
     @Column(name = "balance")
@@ -52,6 +53,11 @@ class UserCoinEntity(
     @Embedded
     var audit: Audit = Audit()
         protected set
+
+    fun issueCoin() {
+        balance++
+        acquiredTotal++
+    }
 
     fun entryCoin() {
         check(balance > 0 && acquiredTotal > 0) {

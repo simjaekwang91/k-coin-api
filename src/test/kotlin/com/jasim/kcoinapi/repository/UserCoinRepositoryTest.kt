@@ -1,7 +1,11 @@
 package com.jasim.kcoinapi.repository
 
+import com.jasim.kcoinapi.coin.entity.CoinEntity
 import com.jasim.kcoinapi.coin.entity.UserCoinEntity
+import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
+import com.jasim.kcoinapi.event.entity.EventEntity
+import com.jasim.kcoinapi.event.repository.EventRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.BeforeEach
@@ -11,6 +15,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -19,14 +24,34 @@ import java.time.temporal.ChronoUnit
 class UserCoinRepositoryTest() {
     @Autowired
     lateinit var userCoinRepository: UserCoinRepository
+    @Autowired
+    lateinit var coinRepository: CoinRepository
+    @Autowired
+    lateinit var eventRepository: EventRepository
     lateinit var baseEntity: UserCoinEntity
+    lateinit var coinEntity: CoinEntity
+    lateinit var eventEntity: EventEntity
 
     @BeforeEach
     fun setUp() {
+        eventEntity = eventRepository.save(EventEntity(
+            "2025 여름휴가 이벤트",
+            Instant.now(),
+            Instant.now().plus(10, ChronoUnit.DAYS),
+        ))
+
+        coinEntity = coinRepository.save(CoinEntity(
+            pPerUserLimit   = 5,
+            pTotalCoinCount = 100,
+            pRemainCoinCount= 100,
+            pEvent = eventEntity
+        ))
+
         baseEntity = UserCoinEntity(
             pUserId = "user123",
             pBalance = 2,
-            pAcquiredTotal = 5
+            pAcquiredTotal = 5,
+            pCoinInfo = coinEntity
         )
     }
 
@@ -69,12 +94,12 @@ class UserCoinRepositoryTest() {
     fun `보유코인 및 사용가능 코인 유효성 동작 테스트`() {
         //given
         val uc1 = userCoinRepository.saveAndFlush(
-            UserCoinEntity("u1", pBalance = 0, pAcquiredTotal = 1)
+            UserCoinEntity("u1", pBalance = 0, pAcquiredTotal = 1, pCoinInfo = coinEntity)
         )
         assertThrows<IllegalStateException> { uc1.entryCoin() }
 
         val uc2 = userCoinRepository.saveAndFlush(
-            UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 0)
+            UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 0, pCoinInfo = coinEntity)
         )
         assertThrows<IllegalStateException> { uc2.entryCoin() }
     }

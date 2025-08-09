@@ -24,7 +24,7 @@ class CoinLogRepositoryTest (
     lateinit var userId: String
     var coinId: Long = 0
     var amount: Int = 0
-    lateinit var reason: String
+    lateinit var reason: CoinLogEntity.Reason
     var eventEntryId: Long? = null
 
     @BeforeEach
@@ -32,7 +32,7 @@ class CoinLogRepositoryTest (
         userId = "user1"
         coinId = 42L
         amount = 5
-        reason = "ENTER"
+        reason = CoinLogEntity.Reason.ISSUE
         eventEntryId = 100L
         baseLog = CoinLogEntity(
             pUserId = userId,

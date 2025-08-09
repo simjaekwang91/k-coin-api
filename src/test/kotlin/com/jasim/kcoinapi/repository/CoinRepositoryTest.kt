@@ -2,6 +2,9 @@ package com.jasim.kcoinapi.repository
 
 import com.jasim.kcoinapi.coin.entity.CoinEntity
 import com.jasim.kcoinapi.coin.repository.CoinRepository
+import com.jasim.kcoinapi.event.entity.EventEntity
+import com.jasim.kcoinapi.event.repository.EventRepository
+import com.jasim.kcoinapi.exception.CoinException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.BeforeEach
@@ -11,6 +14,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
@@ -22,14 +26,24 @@ class CoinRepositoryTest {
     @Autowired
     lateinit var coinRepository: CoinRepository
 
+    @Autowired
+    lateinit var eventRepository: EventRepository
+
     lateinit var baseCoin: CoinEntity
 
     @BeforeEach
     fun setUp() {
+        val event = eventRepository.save(EventEntity(
+            "2025 여름휴가 이벤트",
+            Instant.now(),
+            Instant.now().plus(10, ChronoUnit.DAYS),
+        ))
+
         baseCoin = CoinEntity(
             pPerUserLimit   = 5,
             pTotalCoinCount = 100,
-            pRemainCoinCount= 100
+            pRemainCoinCount= 100,
+            event
         )
     }
 
@@ -85,7 +99,7 @@ class CoinRepositoryTest {
         }
 
         // when / then
-        val ex = assertThrows<IllegalStateException> {
+        val ex = assertThrows<CoinException> {
             find = coinRepository.findById(save.id!!).get()
             find.issueCoin()
         }

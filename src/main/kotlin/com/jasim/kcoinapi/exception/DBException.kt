@@ -1,14 +1,10 @@
 package com.jasim.kcoinapi.exception
 
-import com.jasim.kcoinapi.exception.CoinException.CoinErrorType
-import java.lang.RuntimeException
-
 class DBException(
-    override val message: String? = null,
     val errorType: DBErrorType? = null,
-): RuntimeException(message) {
+): RuntimeException(errorType?.errorMessage) {
 
     enum class DBErrorType(val errorMessage: String){
-        LOCK_EXCEPTION("락 획득에 실패하였습니다.")
+        LOCK_EXCEPTION("다른 요청이 처리 중입니다. 잠시 후 다시 시도해 주세요.")
     }
 }

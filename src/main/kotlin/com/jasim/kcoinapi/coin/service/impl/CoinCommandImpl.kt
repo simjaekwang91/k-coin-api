@@ -6,7 +6,7 @@ import com.jasim.kcoinapi.coin.entity.UserCoinEntity
 import com.jasim.kcoinapi.coin.repository.CoinLogRepository
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
-import com.jasim.kcoinapi.coin.service.CoinCommandSerivce
+import com.jasim.kcoinapi.coin.service.CoinCommandService
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.exception.CoinException
@@ -23,7 +23,7 @@ class CoinCommandImpl(
     private val userCoinRepository: UserCoinRepository,
     private val lockRepository: ProcessLockRepository,
     private val lockProperties: LockProperties
-) : CoinCommandSerivce {
+) : CoinCommandService {
 
     @Transactional(timeout = 10)
     override fun issueCoin(userId: String, coinId: Long, eventId: Long): Boolean {
@@ -39,8 +39,8 @@ class CoinCommandImpl(
         val userCoin = userCoinRepository.findByUserIdAndCoinId(userId, coinId)
             ?: UserCoinEntity(
                 pUserId = userId,
-                pBalance = coinInfo.perIssueCount,
-                pAcquiredTotal = coinInfo.perIssueCount,
+                pBalance = 0,
+                pAcquiredTotal = 0,
                 pCoinInfo = coinInfo
             ).also(userCoinRepository::save)
 

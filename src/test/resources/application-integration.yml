@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: k-coin-api
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+        use_sql_comments: false
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      # Testcontainers(MySQL) 쓰면 always, H2면 기본값도 되지만 명시해두면 안전
+      mode: always
+      schema-locations: classpath:/db/coin-schema.sql
+      data-locations: classpath:/db/init-data.sql
+      continue-on-error: true

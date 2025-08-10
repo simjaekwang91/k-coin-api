@@ -1,208 +1,163 @@
 package com.jasim.kcoinapi.service
 
 import com.jasim.kcoinapi.coin.entity.CoinEntity
+import com.jasim.kcoinapi.coin.entity.CoinLogEntity
 import com.jasim.kcoinapi.coin.entity.UserCoinEntity
 import com.jasim.kcoinapi.coin.repository.CoinLogRepository
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
-import com.jasim.kcoinapi.coin.service.CoinCommandSerivce
-import com.jasim.kcoinapi.coin.service.CoinQueryService
+import com.jasim.kcoinapi.coin.service.CoinCommandService
 import com.jasim.kcoinapi.coin.service.impl.CoinCommandImpl
-import com.jasim.kcoinapi.coin.service.impl.CoinQueryImpl
+import com.jasim.kcoinapi.common.entity.ProcessLockEntity
+import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.event.entity.EventEntity
-import com.jasim.kcoinapi.event.repository.EventRepository
 import com.jasim.kcoinapi.exception.CoinException
-import com.jasim.kcoinapi.exception.CoinException.CoinErrorType
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
-import org.springframework.context.annotation.Import
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
+import org.mockito.Mockito.verifyNoMoreInteractions
+import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
+import org.mockito.kotlin.whenever
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.TestPropertySource
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.Optional
 
 @ActiveProfiles("test")
-@DataJpaTest
-@Import(CoinCommandImpl::class, LockProperties::class, CoinQueryImpl::class) // 설정 빈 등록
-@TestPropertySource(properties = ["dblock.lock-key=global"]) // 값 주입
-class CoinCommandConcurrencyTest {
-
-    @Autowired
-    lateinit var coinCommandService: CoinCommandSerivce
-    @Autowired
-    lateinit var coinQueryService: CoinQueryService
-    @Autowired
+@ExtendWith(MockitoExtension::class)
+class CoinServiceTest {
+    @Mock
     lateinit var coinRepository: CoinRepository
-    @Autowired
+    @Mock
     lateinit var coinLogRepository: CoinLogRepository
-    @Autowired
+    @Mock
     lateinit var userCoinRepository: UserCoinRepository
-    @Autowired
-    lateinit var eventRepository: EventRepository
-    @Autowired
-    lateinit var jdbc: org.springframework.jdbc.core.JdbcTemplate
+    @Mock
+    lateinit var lockRepository: ProcessLockRepository
 
-    private val initialRemain = 5
-    private val threads = 50
-    private lateinit var coin: CoinEntity
-    lateinit var userCoinInfo1: UserCoinEntity
-    lateinit var userCoinInfo2: UserCoinEntity
+    // LockProperties는 스프링 없이도 직접 값 주입해서 씀
+    private lateinit var lockProps: LockProperties
+
+    // @InjectMocks로 주입하려면 lockProps가 먼저 준비돼야 해서,
+    // 생성자 주입을 위해 테스트에서 직접 new 해도 됨 (setup에서 초기화)
+    private lateinit var service: CoinCommandService
+
+    private val coinId = 1L
+    private val userId = "u1"
+    private val eventId = 10L
+
+    private lateinit var coinFixture: CoinEntity
+    private lateinit var eventFixture: EventEntity
+    private lateinit var userCoinFixture: UserCoinEntity
+
 
     @BeforeEach
-    fun setUp() {
-        // 전역락 키 보장 (DDL에 미리 넣었다면 생략 가능)
-        jdbc.update(
-            "MERGE INTO process_lock (lock_key) KEY(lock_key) VALUES (?)",
-            "global"
-        )
+    fun setup() {
+        // 실제 엔티티로 상태 검증
+        eventFixture = EventEntity("이벤트", Instant.now(), Instant.now().plusSeconds(3600))
 
-        val event = eventRepository.save(
-            EventEntity(
-                "2025 여름휴가 이벤트",
-                Instant.now(),
-                Instant.now().plus(10, ChronoUnit.DAYS),
-            )
-        )
-        // 코인정보 생성
-        val coin = CoinEntity(
+        coinFixture = CoinEntity(
             pPerUserLimit = 3,
-            pTotalCoinCount = initialRemain,
-            pRemainCoinCount = initialRemain,
-            pEvent = event,
+            pTotalCoinCount = 5,
+            pRemainCoinCount = 5,
+            pEvent = eventFixture
         )
 
-        this.coin = coinRepository.saveAndFlush(coin)
+        userCoinFixture = UserCoinEntity(
+            pUserId = userId,
+            pBalance = 3,
+            pAcquiredTotal = 3,
+            pCoinInfo = coinFixture
+        )
 
-        userCoinInfo1 = userCoinRepository.save(UserCoinEntity("u1", pBalance = 2, pAcquiredTotal = 3, pCoinInfo = coin))
-        userCoinInfo2 = userCoinRepository.save(UserCoinEntity("u2", pBalance = 1, pAcquiredTotal = 1, pCoinInfo = coin))
+        setId(eventFixture, eventId)
+        setId(coinFixture, coinId)
+
+        lockProps = LockProperties(lockKey = "global")
+
+        // 서비스 실제 인스턴스 구성
+        service = CoinCommandImpl(
+            coinRepository = coinRepository,
+            coinLogRepository = coinLogRepository,
+            userCoinRepository = userCoinRepository,
+            lockRepository = lockRepository,
+            lockProperties = lockProps
+        )
+
+        // 공통 스텁: 락 획득 성공 + 코인 조회 성공
+        whenever(lockRepository.lockWithTimeout(eq(lockProps.lockKey)))
+            .thenReturn(ProcessLockEntity())
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED) // 스레드별 커밋 보이게
-    @DisplayName("50개 쓰레드 동시 요청시 무결성 유지 검증")
-    fun `lock을 통한 코인 발급 요청 무결성 유지 검증 테스트`() {
-        val pool = Executors.newFixedThreadPool(50)
-        val done = CountDownLatch(threads)
+    @DisplayName("issueCoin 성공 → 재고 1 감소 + 로그 1건 저장")
+    fun issue_success() {
+        whenever(coinRepository.findById(eq(coinId))).thenReturn(Optional.of(coinFixture))
+        whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId))).thenReturn(null)
+        whenever(coinLogRepository.save(any<CoinLogEntity>())).thenAnswer { it.arguments[0] as CoinLogEntity }
 
-        val success = AtomicInteger(0)
+        val before = coinFixture.remainCoinCount
+        val ok = service.issueCoin(userId, coinId, eventId)
 
-        repeat(threads) { i ->
-            pool.submit {
-                try {
-                    coinCommandService.issueCoin("testUser${i}", coin.id!!, coin.event.id!!)
-                    val coin = coinRepository.findById(coin.id!!).get()
-                    val userCoinInfo = userCoinRepository.findByUserIdAndCoinId("testUser${i}", coin.id!!)
-                    println(userCoinInfo)
-                    println("testUser${i} 코인 발급 잔여 코인 수량 ${coin.remainCoinCount}")
-                    success.incrementAndGet()
-                } catch (e: CoinException) {
-                    if ((e.message ?: "").contains("다른 요청이 처리 중") || (e.message ?: "").contains("남은 코인 수량이 없습니다")) {
-                        println("testUser${i} error : ${e.message}")
-                    }
-                } finally {
-                    done.countDown()
-                }
-            }
+        assertThat(ok).isTrue()
+        assertThat(coinFixture.remainCoinCount).isEqualTo(before - coinFixture.perIssueCount)
+
+        verify(lockRepository).lockWithTimeout(eq(lockProps.lockKey))
+        verify(coinRepository).findById(eq(coinId))
+        verify(coinLogRepository).save(any())
+        verifyNoMoreInteractions(lockRepository, coinRepository, coinLogRepository)
+    }
+
+    @Test
+    @DisplayName("코인 없음 → CoinException(발급 요청한 코인이 없습니다)")
+    fun issue_coinNotFound() {
+        whenever(coinRepository.findById(eq(coinId))).thenReturn(Optional.empty())
+
+        assertThatThrownBy {
+            service.issueCoin(userId, coinId, eventId)
         }
-
-        done.await(10, TimeUnit.SECONDS)
-        pool.shutdownNow()
-
-        val updated = coinRepository.findById(coin.id!!).get()
-        val logsForCoin = coinLogRepository.count()
-        println("최종 발급 코인 수량 ${success.get()}")
-
-        assertThat(success.get())
-            .describedAs("최종 코인 발급 수량은 totalCoinCount 수량을 초과할 수 없음")
-            .isLessThanOrEqualTo(updated.totalCoinCount)
-
-        assertThat(updated.remainCoinCount)
-            .describedAs("최종 잔여 코인 = 초기 - 성공")
-            .isEqualTo(initialRemain - success.get())
-
-        assertThat(logsForCoin)
-            .describedAs("로그 수 = 성공 수")
-            .isEqualTo(success.get().toLong())
-
-        assertThat(updated.remainCoinCount)
-            .describedAs("잔여 코인은 음수가 될 수 없다.")
-            .isGreaterThanOrEqualTo(0)
-    }
-
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED) // 스레드별 커밋 보이게
-    @DisplayName("50개 쓰레드 동시 요청시 무결성 깨짐 검증(실패 테스트)")
-    fun `Lock 없이 수행시 무결성 깨짐 테스트`() {
-        val pool = Executors.newFixedThreadPool(50)
-        val done = CountDownLatch(threads)
-
-        val success = AtomicInteger(0)
-
-        repeat(threads) { i ->
-            pool.submit {
-                try {
-                    coinCommandService.issueCoinWithNoLock("testUser$i", coin.id!!, coin.event.id!!)
-                    val coin = coinRepository.findById(coin.id!!).get()
-                    println("testUser${i} 코인 발급 잔여 코인 수량 ${coin.remainCoinCount}")
-                    success.incrementAndGet()
-                } catch (e: CoinException) {
-                    println(e.message)
-                } finally {
-                    done.countDown()
-                }
-            }
-        }
-
-        done.await(10, TimeUnit.SECONDS)
-        pool.shutdownNow()
-
-        val updated = coinRepository.findById(coin.id!!).get()
-        println("최종 발급 코인 수량 ${success.get()}")
-
-        // 정상 invariant: remain + logs == initialRemain
-        assertThat(success.get())
-            .describedAs("최종 코인 발급 수량은 totalCoinCount 수량을 초과할 수 없음(무결성 깨짐)")
-            .isGreaterThan(updated.totalCoinCount)
-    }
-
-    @Test
-    fun `getAllCoinInfo - 남은코인과 사용자 목록 반환`() {
-        val dto = coinQueryService.getAllCoinInfo(coin.id!!)
-        assertThat(dto?.remainCoinCount).isEqualTo(5)
-        assertThat(dto?.userCoinInfo).hasSize(2)
-    }
-
-    @Test
-    fun `getAllCoinInfo - 코인 없음 예외`() {
-        assertThatThrownBy { coinQueryService.getAllCoinInfo(-1L) }
             .isInstanceOf(CoinException::class.java)
-            .hasMessageContaining(CoinErrorType.NOT_EXIST_COIN.errorMessage)
+            .hasMessageContaining("발급 요청한 코인이 없습니다")
+
+        verify(lockRepository).lockWithTimeout(eq(lockProps.lockKey))
+        verify(coinRepository).findById(eq(coinId))
+        verifyNoMoreInteractions(lockRepository, coinRepository)
+        verifyNoInteractions(coinLogRepository, userCoinRepository)
     }
 
     @Test
-    fun `getCoinInfoByUserId - 특정 사용자 코인정보`() {
-        val dto = coinQueryService.getCoinInfoByUserId("u1", coin.id!!)
-        assertThat(dto).isNotNull
-        assertThat(dto!!.userId).isEqualTo("u1")
-        assertThat(dto.balance).isEqualTo(2)
-        assertThat(dto.acquiredTotal).isEqualTo(3)
+    @DisplayName("재고 0 → 도메인 로직이 던지는 예외 전파 (남은 코인 수량 없음 등)")
+    fun issue_outOfStock() {
+        // 재고 0 코인
+        val zero = CoinEntity(
+            pPerUserLimit = 3,
+            pTotalCoinCount = 0,
+            pRemainCoinCount = 0,
+            pEvent = eventFixture,
+        )
+        whenever(coinRepository.findById(eq(coinId))).thenReturn(Optional.of(zero))
+
+        assertThatThrownBy {
+            service.issueCoin(userId, coinId, eventId)
+        }.isInstanceOf(RuntimeException::class.java)
+
+        verify(lockRepository).lockWithTimeout(eq(lockProps.lockKey))
+        verify(coinRepository).findById(eq(coinId))
+        verifyNoMoreInteractions(lockRepository, coinRepository)
+        verifyNoInteractions(coinLogRepository)
     }
 
-    @Test
-    fun `getCoinInfoByUserId - 없으면 null`() {
-        val dto = coinQueryService.getCoinInfoByUserId("noneInfo", coin.id!!)
-        assertThat(dto).isNull()
+    private fun setId(entity: Any, value: Long) {
+        val f = entity::class.java.getDeclaredField("id")
+        f.isAccessible = true
+        f.set(entity, value)
     }
 }

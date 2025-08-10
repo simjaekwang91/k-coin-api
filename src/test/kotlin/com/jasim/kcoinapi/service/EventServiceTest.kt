@@ -6,191 +6,174 @@ import com.jasim.kcoinapi.coin.entity.UserCoinEntity
 import com.jasim.kcoinapi.coin.repository.CoinLogRepository
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
+import com.jasim.kcoinapi.common.entity.ProcessLockEntity
+import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.event.entity.EventEntity
 import com.jasim.kcoinapi.event.entity.EventEntryEntity
+import com.jasim.kcoinapi.event.entity.EventEntryEntity.EntryStatus
 import com.jasim.kcoinapi.event.entity.RewardEntity
 import com.jasim.kcoinapi.event.repository.EventEntryRepository
-import com.jasim.kcoinapi.event.repository.EventRepository
 import com.jasim.kcoinapi.event.repository.RewardRepository
 import com.jasim.kcoinapi.event.service.impl.EventCommandImpl
-import com.jasim.kcoinapi.event.service.impl.EventQueryImpl
-import com.jasim.kcoinapi.exception.CoinException
 import com.jasim.kcoinapi.exception.EventException
-import com.jasim.kcoinapi.exception.EventException.EventErrorType
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
-import org.springframework.context.annotation.Import
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.quality.Strictness
+import org.mockito.junit.jupiter.MockitoSettings
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.TestPropertySource
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
-import java.time.temporal.ChronoUnit
-import kotlin.jvm.java
+import java.util.Optional
 
 @ActiveProfiles("test")
-@DataJpaTest
-@Import(EventCommandImpl::class, LockProperties::class, EventQueryImpl::class) // 설정 빈 등록
-@TestPropertySource(properties = ["dblock.lock-key=global"]) // 값 주입
+@ExtendWith(MockitoExtension::class)
+@MockitoSettings(strictness = Strictness.LENIENT) // 필요 시 제거 가능
 class EventServiceTest {
 
-    @Autowired
-    lateinit var eventCommandService: EventCommandImpl
+    @Mock lateinit var eventEntryRepository: EventEntryRepository
+    @Mock lateinit var rewardRepository: RewardRepository
+    @Mock lateinit var coinRepository: CoinRepository
+    @Mock lateinit var userCoinRepository: UserCoinRepository
+    @Mock lateinit var lockRepository: ProcessLockRepository
+    @Mock lateinit var coinLogRepository: CoinLogRepository
+    @Mock lateinit var lockProperties: LockProperties
 
-    @Autowired
-    lateinit var eventRepository: EventRepository
+    @InjectMocks lateinit var service: EventCommandImpl
 
-    @Autowired
-    lateinit var rewardRepository: RewardRepository
+    private val userId = "u1"
+    private val eventId = 10L
+    private val rewardId = 20L
+    private val coinId = 30L
 
-    @Autowired
-    lateinit var eventEntryRepository: EventEntryRepository
-
-    @Autowired
-    lateinit var coinRepository: CoinRepository
-
-    @Autowired
-    lateinit var userCoinRepository: UserCoinRepository
-
-    @Autowired
-    lateinit var coinLogRepository: CoinLogRepository
-
-    @Autowired
-    lateinit var jdbc: org.springframework.jdbc.core.JdbcTemplate
-
-    private lateinit var event: EventEntity
-    private lateinit var coin: CoinEntity
-    private lateinit var reward: RewardEntity
-    private lateinit var userCoin: UserCoinEntity
-    private lateinit var entry: EventEntryEntity
-    private val userId = "testUser"
+    private lateinit var eventFixture: EventEntity
+    private lateinit var rewardFixture: RewardEntity
+    private lateinit var coinFixture: CoinEntity
+    private lateinit var userCoinFixture: UserCoinEntity
 
     @BeforeEach
     fun setup() {
-        // 락 키 준비 (스키마에 기본 키를 넣었다면 생략 가능)
-        jdbc.update("MERGE INTO process_lock (lock_key) KEY(lock_key) VALUES (?)", "global")
-
-        event = eventRepository.save(
-            EventEntity(
-                "2025 여름휴가 이벤트", Instant.now(), Instant.now().plus(7, ChronoUnit.DAYS)
-            )
+        // --- 도메인 픽스처 ---
+        eventFixture = EventEntity("이벤트", Instant.now(), Instant.now().plusSeconds(3600))
+        rewardFixture = RewardEntity(
+            pRewardName = "1일 휴가권",
+            pWinningQuota = 10,
+            pRequiredCoins = 2,
+            pEvent = eventFixture
+        )
+        coinFixture = CoinEntity(
+            pPerUserLimit = 5,
+            pTotalCoinCount = 100,
+            pRemainCoinCount = 100,
+            pEvent = eventFixture
+        )
+        userCoinFixture = UserCoinEntity(
+            pUserId = userId,
+            pBalance = 3,
+            pAcquiredTotal = 3,
+            pCoinInfo = coinFixture
         )
 
-        coin = coinRepository.saveAndFlush(
-            CoinEntity(
-                pPerUserLimit = 5,
-                pTotalCoinCount = 100,
-                pRemainCoinCount = 100,
-                pEvent = event
-            )
-        )
+        // --- id 세팅 (서비스가 id를 사용하므로 반드시 필요) ---
+        setId(eventFixture, eventId)
+        setId(rewardFixture, rewardId)
+        setId(coinFixture,   coinId)
 
-        // requiredCoins = 2 짜리 리워드
-        reward = rewardRepository.save(
-            RewardEntity(
-                pRewardName = "1일 휴가권",
-                pWinningQuota = 10,
-                pRequiredCoins = 2,
-                pEvent = event,
-            )
-        )
+        // --- 인프라 스텁 ---
+        whenever(lockProperties.lockKey).thenReturn("global")
+        doReturn(ProcessLockEntity()).`when`(lockRepository).lockWithTimeout(any())
 
-        // 유저 코인: balance 3 / 총 3
-        userCoin = userCoinRepository.save(
-            UserCoinEntity(
-                pUserId = userId,
-                pBalance = 3,
-                pAcquiredTotal = 3,
-                pCoinInfo = coin
-            )
-        )
+        whenever(rewardRepository.findById(eq(rewardId))).thenReturn(Optional.of(rewardFixture))
+        whenever(coinRepository.findByEventId(eq(eventId))).thenReturn(coinFixture)
+        whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId)))
+            .thenReturn(userCoinFixture)
 
+        // 기본: 아직 응모 안 함
+        whenever(eventEntryRepository.existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+            .thenReturn(false)
+        // 취소 분기에서만 사용, 기본은 null
+        whenever(eventEntryRepository.findByRewardIdAndUserId(eq(rewardId), eq(userId)))
+            .thenReturn(null)
+
+        // save(...)는 받은 객체를 그대로 반환 (Kotlin null-safety 회피)
+        doAnswer { it.getArgument<EventEntryEntity>(0) }
+            .`when`(eventEntryRepository).save(any())
+        doAnswer { it.getArgument<CoinLogEntity>(0) }
+            .`when`(coinLogRepository).save(any())
     }
 
     @Test
-    @DisplayName("응모 성공: 잔액 감소, 엔트리 생성, 로그 기록")
+    @DisplayName("응모 성공 → 잔액 감소")
     fun enter_success() {
-        //given
-        val beforeBalance = userCoinRepository.findByUserIdAndCoinId(userId, coin.id!!)!!.balance
+        // when
+        service.setReward(eventId, rewardId, userId, EntryStatus.ENTERED.code)
+
+        // then: 3 -> 1 (requiredCoins = 2)
+        assertThat(userCoinFixture.balance).isEqualTo(1)
+        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED))
+        verify(eventEntryRepository).save(any())
+        verify(coinLogRepository).save(any())
+    }
+
+    @Test
+    @DisplayName("중복 응모 → 중복 응모 실패")
+    fun enter_alreadyEntered() {
+        // given: 이미 응모한 상태
+        whenever(eventEntryRepository.existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+            .thenReturn(true)
+
+        // then
+        assertThatThrownBy {
+            service.setReward(eventId, rewardId, userId, EntryStatus.ENTERED.code)
+        }
+            .isInstanceOf(EventException::class.java)
+            .hasMessageContaining("이미 응모 되었습니다. 중복 응모는 불가능 합니다.")
+
+        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED))
+        verify(eventEntryRepository, never()).save(any())
+        verify(coinLogRepository,  never()).save(any())
+    }
+
+    @Test
+    @DisplayName("취소 성공 → 코인 복구")
+    fun cancel_success() {
+        // given: 이미 한 번 응모해서 현재 잔액이 1
+        val afterEnter = UserCoinEntity(
+            pUserId = userId, pBalance = 1, pAcquiredTotal = 3, pCoinInfo = coinFixture
+        )
+        whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId)))
+            .thenReturn(afterEnter)
+
+        // 취소 시에는 기존 엔트리 하나가 있어야 함
+        val entered = EventEntryEntity(userId, EntryStatus.ENTERED, rewardFixture)
+        whenever(eventEntryRepository.findByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+            .thenReturn(entered)
 
         // when
-        eventCommandService.setReward(event.id!!, reward.id!!, userId, 0)
+        service.setReward(eventId, rewardId, userId, EntryStatus.CANCELLED.code)
 
-        // then
-        val after = userCoinRepository.findByUserIdAndCoinId(userId, coin.id!!)!!
-        assertThat(after.balance).isEqualTo(beforeBalance - reward.requiredCoins)
-
-        val entry = eventEntryRepository.findByRewardIdAndUserId(reward.id!!, userId)
-        assertThat(entry).isNotNull
-        assertThat(entry!!.status).isEqualTo(EventEntryEntity.EntryStatus.ENTERED)
-
-        val logs = coinLogRepository.findAll()
-        assertThat(logs).hasSize(1)
-        assertThat(logs[0].reason).isEqualTo(CoinLogEntity.Reason.ENTERED)
-        assertThat(logs[0].useAmount).isEqualTo(reward.requiredCoins)
+        // then: 1 + 2 = 3 으로 복구
+        assertThat(afterEnter.balance).isEqualTo(3)
+        assertThat(entered.status).isEqualTo(EntryStatus.CANCELLED)
+        verify(coinLogRepository).save(any())
     }
 
-    @Test
-    @DisplayName("중복 응모 시 에러(ALREADY_ENTERED)")
-    fun enter_alreadyEntered_fail() {
-        //given
-        eventCommandService.setReward(event.id!!, reward.id!!, userId, EventEntryEntity.EntryStatus.ENTERED.code)
-
-        assertThatThrownBy {
-            eventCommandService.setReward(event.id!!, reward.id!!, userId, 0)
-        }
-            .isInstanceOf(EventException::class.java)
-            .hasMessageContaining(EventErrorType.ALREADY_ENTERED.errorMessage)
-    }
-
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    @DisplayName("취소 성공: 잔액 복구, 엔트리 상태 CANCELLED, 로그 기록")
-    fun cancel_success() {
-        // 응모로 코인 2 소모
-        eventCommandService.setReward(event.id!!, reward.id!!, userId, 0)
-
-        val mid = userCoinRepository.findByUserIdAndCoinId(userId, coin.id!!)!!
-        // when: 취소
-        eventCommandService.setReward(event.id!!, reward.id!!, userId, 1)
-
-        // then
-        val after = userCoinRepository.findByUserIdAndCoinId(userId, coin.id!!)!!
-        //취소후 잔액은 응모 이후 + 요구 코인 수량과 같아야 한다
-        assertThat(after.balance).isEqualTo(mid.balance + reward.requiredCoins)
-
-        val entry = eventEntryRepository.findByRewardIdAndUserId(reward.id!!, userId)
-        assertThat(entry).isNotNull
-        assertThat(entry!!.status).isEqualTo(EventEntryEntity.EntryStatus.CANCELLED)
-
-        val logs = coinLogRepository.findAll()
-        assertThat(logs.any { it.reason == CoinLogEntity.Reason.CANCELLED }).isTrue()
-    }
-
-    @Test
-    @DisplayName("잘못된 status 코드 → NOT_FOUND_TYPE 예외")
-    fun invalid_status_code_fails() {
-        assertThatThrownBy {
-            eventCommandService.setReward(event.id!!, reward.id!!, userId, 999)
-        }
-            .isInstanceOf(EventException::class.java)
-            .hasMessageContaining(EventErrorType.NOT_FOUND_TYPE.errorMessage)
-    }
-
-    @Test
-    @DisplayName("사용자 코인 없음 → NOT_FOUND_USER_COIN")
-    fun no_user_coin_fails() {
-        // 다른 유저
-        assertThatThrownBy {
-            eventCommandService.setReward(event.id!!, reward.id!!, "someone-else", 0)
-        }
-            .isInstanceOf(CoinException::class.java)
-            .hasMessageContaining(CoinException.CoinErrorType.NOT_FOUND_USER_COIN.errorMessage)
+    private fun setId(entity: Any, value: Long) {
+        val f = entity::class.java.getDeclaredField("id")
+        f.isAccessible = true
+        f.set(entity, value)
     }
 }

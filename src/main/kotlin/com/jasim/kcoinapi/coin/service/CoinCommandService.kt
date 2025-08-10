@@ -1,6 +1,6 @@
 package com.jasim.kcoinapi.coin.service
 
-interface CoinCommandSerivce {
+interface CoinCommandService {
     //응모 코인 획득
     fun issueCoin(userId: String, coinId: Long, eventId: Long): Boolean
 

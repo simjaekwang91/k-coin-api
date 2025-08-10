@@ -54,7 +54,7 @@ class EventCommandImpl(
         when (EntryStatus.fromCode(status)) {
             //응모
             EntryStatus.ENTERED -> {
-                if (eventEntryRepository.existsByRewardIdAndUserId(rewardId, userId)) {
+                if (eventEntryRepository.existsByRewardIdAndUserIdAndStatus(rewardId, userId, EntryStatus.ENTERED)) {
                     throw EventException(EventErrorType.ALREADY_ENTERED)
                 }
 
@@ -75,7 +75,7 @@ class EventCommandImpl(
             //응모취소
             EntryStatus.CANCELLED -> {
                 userCoinInfo.cancelCoin(reward.requiredCoins)
-                val eventEntryInfo = eventEntryRepository.findByRewardIdAndUserId(rewardId, userId)
+                val eventEntryInfo = eventEntryRepository.findByRewardIdAndUserIdAndStatus(rewardId, userId, EntryStatus.ENTERED)
                     ?: throw EventException(EventErrorType.NOT_FOUND_ENTERED_LOG)
 
                 eventEntryInfo.cancel()

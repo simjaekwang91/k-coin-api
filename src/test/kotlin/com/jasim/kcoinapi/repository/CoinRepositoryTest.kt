@@ -50,7 +50,6 @@ class CoinRepositoryTest {
     @Test
     fun `저장 및 조회 테스트`() {
         // given
-        val before = Instant.now()
         val saved = coinRepository.saveAndFlush(baseCoin)
 
         // when

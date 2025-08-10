@@ -36,6 +36,28 @@ class GlobalExceptionHandler {
         )
     }
 
+    @ExceptionHandler(CoinException::class)
+    fun coinExceptionHandler(exception: CoinException): ResponseEntity<ApiError> {
+        logger.error(exception.message, exception)
+        exception.errorType?.let { logger.error(it.errorMessage, exception) }
+        val status = HttpStatus.INTERNAL_SERVER_ERROR
+
+        return ResponseEntity.status(status).body(
+            ApiError(errorCode = "COIN_ERROR", errorMessage = exception.message)
+        )
+    }
+
+    @ExceptionHandler(EventException::class)
+    fun eventExceptionHandler(exception: EventException): ResponseEntity<ApiError> {
+        logger.error(exception.message, exception)
+        exception.errorType?.let { logger.error(it.errorMessage, exception) }
+        val status = HttpStatus.INTERNAL_SERVER_ERROR
+
+        return ResponseEntity.status(status).body(
+            ApiError(errorCode = "DB_ERROR", errorMessage = exception.message)
+        )
+    }
+
     data class ApiError(
         val errorCode: String,
         val errorMessage: String? = null,

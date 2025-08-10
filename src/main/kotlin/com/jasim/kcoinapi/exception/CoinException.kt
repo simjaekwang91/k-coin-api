@@ -1,8 +1,8 @@
 package com.jasim.kcoinapi.exception
 
 class CoinException(
-    val coinErrorType: CoinErrorType? = null,
-) : RuntimeException(coinErrorType?.errorMessage) {
+    val errorType: CoinErrorType? = null,
+) : RuntimeException(errorType?.errorMessage) {
     enum class CoinErrorType(val errorMessage: String) {
         NOT_FOUND_USER_COIN("해당 사용자에게 발급된 코인 정보가 없습니다."),
         NOT_EXIST_COIN("발급 요청한 코인이 없습니다."),

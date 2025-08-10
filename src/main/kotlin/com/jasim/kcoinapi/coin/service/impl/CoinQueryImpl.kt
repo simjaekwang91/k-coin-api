@@ -4,7 +4,6 @@ import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
-import com.jasim.kcoinapi.coin.service.CoinCommandSerivce
 import com.jasim.kcoinapi.coin.service.CoinQueryService
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
@@ -25,7 +24,7 @@ class CoinQueryImpl(
 ) : CoinQueryService {
     //남은 응모 코인 수와 사용자별 획득한 응모 코인 수량을 조회한다
     @Transactional(timeout = 10)
-    override fun getAllCoinInfo(coinId: Long): CoinDto? {
+    override fun getAllCoinSummary(coinId: Long): CoinDto? {
         //1) lock 획득
         lockRepository.lockWithTimeout(lockProperties.lockKey)
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
@@ -36,7 +35,7 @@ class CoinQueryImpl(
     }
 
     @Transactional(timeout = 10)
-    override fun getCoinInfoByUserId(userId: String, coinId: Long): UserCoinDto? {
+    override fun getUserCoinSummary(userId: String, coinId: Long): UserCoinDto? {
         //1) lock 획득
         lockRepository.lockWithTimeout(lockProperties.lockKey)
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)

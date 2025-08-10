@@ -20,6 +20,11 @@ spring:
       mode: always
       schema-locations: classpath:/db/coin-schema.sql
       data-locations: classpath:/db/init-data.sql
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui
 
 dblock:
   lock-key: global

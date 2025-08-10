@@ -16,9 +16,9 @@ INSERT IGNORE INTO reward (
 
 -- 3) 코인 초기값
 INSERT IGNORE INTO coin (
-    id, event_id, per_user_limit, total_coin_count, remain_coin_count, created_at, updated_at
+    id, event_id, per_user_limit, per_issue_count, total_coin_count, remain_coin_count, created_at, updated_at
 ) VALUES
-    (1, 1, 3, 900, 900, NOW(), NOW());
+    (1, 1, 3, 1, 900, 900, NOW(), NOW());
 
 INSERT IGNORE INTO process_lock(lock_key) VALUES ('global');
 

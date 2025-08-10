@@ -3,10 +3,11 @@ package com.jasim.kcoinapi.exception
 import com.jasim.kcoinapi.exception.DBException.DBErrorType
 
 class EventException(
-    private val errorType: EventErrorType? = null,
+    val errorType: EventErrorType? = null,
 ): RuntimeException(errorType?.errorMessage) {
 
     enum class EventErrorType(val errorMessage: String){
+        NOT_ENTERED_REWARD("응모 이력이 없습니다."),
         NOT_FOUND_TYPE("존재하지 않는 동작입니다."),
         NOT_FOUND_REWARD("존재하지 않는 휴가권 입니다."),
         NOT_FOUND_EVENT_COIN("이벤트에 발급된 코인이 없습니다."),

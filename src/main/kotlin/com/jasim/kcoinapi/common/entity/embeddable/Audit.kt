@@ -7,8 +7,7 @@ import org.springframework.data.annotation.LastModifiedDate
 import java.time.Instant
 
 @Embeddable
-class
-Audit(
+class Audit(
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     var createdAt: Instant? = null,

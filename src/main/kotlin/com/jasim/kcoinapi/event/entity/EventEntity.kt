@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import org.hibernate.annotations.BatchSize
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.Instant
 
@@ -44,12 +45,14 @@ class EventEntity(
         mappedBy = "event",
         fetch = FetchType.LAZY
     )
+    @BatchSize(size = 50)
     var rewards: MutableList<RewardEntity> = mutableListOf()
 
     @OneToMany(
         mappedBy = "event",
         fetch = FetchType.LAZY
     )
+    @BatchSize(size = 50)
     var coins: MutableList<CoinEntity> = mutableListOf()
 
     @Embedded

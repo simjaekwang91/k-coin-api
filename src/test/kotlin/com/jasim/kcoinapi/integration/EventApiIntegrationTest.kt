@@ -8,6 +8,7 @@ import com.jasim.kcoinapi.common.dto.response.ApiResponse
 import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
 import com.jasim.kcoinapi.event.dto.request.UserEntryRequest
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -37,6 +38,12 @@ class EventApiIntegrationTest {
     lateinit var restTemplate: TestRestTemplate
 
     private fun url(p: String) = "http://localhost:$port$p"
+
+    @Autowired lateinit var ds: javax.sql.DataSource
+    @BeforeEach
+    fun poke() {
+        println("** DS URL = " + (ds as com.zaxxer.hikari.HikariDataSource).jdbcUrl)
+    }
 
     @Test
     @DisplayName("리워드 응모 현황 검증")

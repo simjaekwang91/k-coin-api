@@ -14,7 +14,7 @@ class TestcontainersConfig {
     @ServiceConnection  // Spring Boot 3.1+ 가
     fun mysql(): MySQLContainer<*> =
         MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("kcoin")
+            .withDatabaseName("coin_test")
             .withUsername("test")
             .withPassword("test")
 }

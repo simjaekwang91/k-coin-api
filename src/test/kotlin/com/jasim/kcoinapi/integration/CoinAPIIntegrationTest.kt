@@ -6,6 +6,7 @@ import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
 import com.jasim.kcoinapi.common.dto.response.ApiResponse
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -35,6 +36,12 @@ class CoinApiIntegrationTest {
     lateinit var restTemplate: TestRestTemplate
 
     private fun url(p: String) = "http://localhost:$port$p"
+
+    @Autowired lateinit var ds: javax.sql.DataSource
+    @BeforeEach
+    fun poke() {
+        println("** DS URL = " + (ds as com.zaxxer.hikari.HikariDataSource).jdbcUrl)
+    }
 
     @Test
     fun `응모 코인 발급 성공`() {

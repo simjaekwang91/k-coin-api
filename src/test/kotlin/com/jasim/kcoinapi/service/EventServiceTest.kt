@@ -17,6 +17,7 @@ import com.jasim.kcoinapi.event.entity.RewardEntity
 import com.jasim.kcoinapi.event.repository.EventEntryRepository
 import com.jasim.kcoinapi.event.repository.RewardRepository
 import com.jasim.kcoinapi.event.service.impl.EventCommandImpl
+import com.jasim.kcoinapi.exception.CoinException
 import com.jasim.kcoinapi.exception.DBException
 import com.jasim.kcoinapi.exception.EventException
 import org.assertj.core.api.Assertions.assertThat
@@ -90,12 +91,10 @@ class EventServiceTest {
             pCoinInfo = coinFixture
         )
 
-        // --- id 세팅 (서비스가 id를 사용하므로 반드시 필요) ---
         setId(eventFixture, eventId)
         setId(rewardFixture, rewardId)
         setId(coinFixture,   coinId)
 
-        // --- 인프라 스텁 ---
         whenever(lockProperties.lockKey).thenReturn("global")
         doReturn(ProcessLockEntity()).`when`(lockRepository).lockWithTimeout(any())
 
@@ -188,10 +187,9 @@ class EventServiceTest {
         assertThatThrownBy {
             service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
         }
-            .isInstanceOf(RuntimeException::class.java) // CoinException일 가능성 높음
-            .hasMessageContaining("잔여 코인") // 메시지가 바뀌면 이 줄만 완화/삭제
+            .isInstanceOf(CoinException::class.java)
+            .hasMessageContaining("잔여 코인")
 
-        // save 호출 안 됨
         verify(eventEntryRepository, never()).save(any())
         verify(coinLogRepository,  never()).save(any())
     }

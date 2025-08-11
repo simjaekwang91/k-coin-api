@@ -17,6 +17,7 @@ import com.jasim.kcoinapi.event.entity.RewardEntity
 import com.jasim.kcoinapi.event.repository.EventEntryRepository
 import com.jasim.kcoinapi.event.repository.RewardRepository
 import com.jasim.kcoinapi.event.service.impl.EventCommandImpl
+import com.jasim.kcoinapi.exception.DBException
 import com.jasim.kcoinapi.exception.EventException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -30,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.quality.Strictness
 import org.mockito.junit.jupiter.MockitoSettings
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
@@ -149,7 +151,7 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("취소 성공 → 코인 복구")
+    @DisplayName("응모 취소 성공 → 코인 복구 검증")
     fun cancel_success() {
         // given: 이미 한 번 응모해서 현재 잔액이 1
         val afterEnter = UserCoinEntity(
@@ -170,6 +172,80 @@ class EventServiceTest {
         assertThat(afterEnter.balance).isEqualTo(3)
         assertThat(entered.status).isEqualTo(EntryStatus.CANCELLED)
         verify(coinLogRepository).save(any())
+    }
+
+    @Test
+    @DisplayName("잔액 부족 → 응모 실패")
+    fun enter_insufficientBalance() {
+        // given: requiredCoins=2, 사용자 잔액=1
+        val lowBalance = UserCoinEntity(
+            pUserId = userId, pBalance = 1, pAcquiredTotal = 1, pCoinInfo = coinFixture
+        )
+        whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId)))
+            .thenReturn(lowBalance)
+
+        // when + then
+        assertThatThrownBy {
+            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+        }
+            .isInstanceOf(RuntimeException::class.java) // CoinException일 가능성 높음
+            .hasMessageContaining("잔여 코인") // 메시지가 바뀌면 이 줄만 완화/삭제
+
+        // save 호출 안 됨
+        verify(eventEntryRepository, never()).save(any())
+        verify(coinLogRepository,  never()).save(any())
+    }
+
+    @Test
+    @DisplayName("응모 이력 없이 취소 시 실패")
+    fun cancel_withoutEnteredHistory() {
+        // given: 사용자 코인은 정상 존재
+        whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId)))
+            .thenReturn(userCoinFixture)
+
+        // 응모 이력 없음
+        whenever(eventEntryRepository.findByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EventEntryEntity.EntryStatus.ENTERED)))
+            .thenReturn(null)
+
+        // when + then
+        assertThatThrownBy {
+            service.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
+        }
+            .isInstanceOf(EventException::class.java)
+
+        verify(coinLogRepository, never()).save(any())
+    }
+
+    @Test
+    @DisplayName("리워드 없음 → 실패")
+    fun reward_notFound() {
+        // given
+        whenever(rewardRepository.findById(eq(rewardId))).thenReturn(Optional.empty())
+
+        // when + then
+        assertThatThrownBy {
+            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+        }
+            .isInstanceOf(EventException::class.java)
+
+        verify(eventEntryRepository, never()).save(any())
+    }
+
+    @Test
+    @DisplayName("응모 성공 시 저장되는 엔트리 필드 검증")
+    fun enter_persistsEntryFields() {
+        // given: 기본 스텁(응모 가능) 사용
+        val captor = argumentCaptor<EventEntryEntity>()
+
+        // when
+        service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+
+        // then
+        verify(eventEntryRepository).save(captor.capture())
+        val saved = captor.firstValue
+        assertThat(saved.userId).isEqualTo(userId)
+        assertThat(saved.reward.id).isEqualTo(rewardId)
+        assertThat(saved.status).isEqualTo(EntryStatus.ENTERED)
     }
 
     private fun setId(entity: Any, value: Long) {

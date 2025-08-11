@@ -30,18 +30,16 @@ class CoinQueryImpl(
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
 
         return coinRepository.findByIdOrNull(coinId)?.let {
-            CoinDto.from(it.remainCoinCount, userCoinRepository.findByCoinId(coinId))
+            CoinDto(it.remainCoinCount, userCoinRepository.findSummariesByCoinId(coinId))
         } ?: throw CoinException(CoinErrorType.NOT_EXIST_COIN)
     }
 
     @Transactional(timeout = 10)
     override fun getUserCoinSummary(userId: String, coinId: Long): UserCoinDto? {
-        //1) lock 획득
         lockRepository.lockWithTimeout(lockProperties.lockKey)
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
 
-        return userCoinRepository.findByUserIdAndCoinId(userId, coinId)?.let {
-            UserCoinDto.from(it)
-        }
+        return userCoinRepository.findUserCoinSummary(userId, coinId)
+            ?: throw CoinException(CoinErrorType.NOT_EXIST_COIN)
     }
 }

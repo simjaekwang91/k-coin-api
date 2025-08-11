@@ -35,8 +35,7 @@ class EventQueryImpl(
         }
 
         //3)응모 수량 확인
-        val entryCount = eventEntryRepository.findByRewardIdAndStatus(rewardId, EntryStatus.ENTERED)?.count()
-            ?: throw EventException(EventErrorType.NOT_ENTERED_REWARD)
+        val entryCount = eventEntryRepository.countByRewardIdAndStatus(rewardId, EntryStatus.ENTERED).toInt()
 
         return RewardEntryDto(reward.rewardName, entryCount)
 
@@ -54,11 +53,8 @@ class EventQueryImpl(
         }
 
         //3) 유저 응모 현황 조회
-        val userEntries = eventEntryRepository.findByRewardIdAndUserId(rewardId, userId)
-            ?: throw EventException(EventErrorType.NOT_ENTERED_REWARD)
+        val userEntries = eventEntryRepository.findUserEntryDetails(rewardId, userId)
 
-        return UserEntryDto(userId, userEntries.map {
-            UserEntryDto.from(it)
-        })
+        return UserEntryDto(userId, userEntries)
     }
 }

@@ -13,6 +13,5 @@ data class UserCoinDto(
             acquiredTotal = userCoinEntity.acquiredTotal,
             balance = userCoinEntity.balance
         )
-
     }
 }

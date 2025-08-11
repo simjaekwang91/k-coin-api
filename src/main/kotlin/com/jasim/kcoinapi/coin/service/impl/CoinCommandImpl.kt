@@ -13,6 +13,7 @@ import com.jasim.kcoinapi.exception.CoinException
 import com.jasim.kcoinapi.exception.CoinException.CoinErrorType
 import com.jasim.kcoinapi.exception.DBException
 import com.jasim.kcoinapi.exception.DBException.DBErrorType
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -31,9 +32,8 @@ class CoinCommandImpl(
         lockRepository.lockWithTimeout(lockProperties.lockKey)
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
 
-        val coinInfo = coinRepository.findById(coinId).orElseThrow {
-            CoinException(CoinErrorType.NOT_EXIST_COIN)
-        }
+        val coinInfo = coinRepository.findByIdOrNull(coinId)
+            ?: throw CoinException(CoinErrorType.NOT_EXIST_COIN)
 
         // 2) 유저코인 정보 확인 및 생성
         val userCoin = userCoinRepository.findByUserIdAndCoinId(userId, coinId)
@@ -63,16 +63,15 @@ class CoinCommandImpl(
 
     @Transactional(timeout = 10)
     override fun issueCoinWithNoLock(userId: String, coinId: Long, eventId: Long): Boolean {
-        val coinInfo = coinRepository.findById(coinId).orElseThrow {
-            CoinException(CoinErrorType.NOT_EXIST_COIN)
-        }
+        val coinInfo = coinRepository.findByIdOrNull(coinId)
+            ?: throw CoinException(CoinErrorType.NOT_EXIST_COIN)
 
         // 1) 유저코인 정보 확인 및 생성
         val userCoin = userCoinRepository.findByUserIdAndCoinId(userId, coinId)
             ?: UserCoinEntity(
                 pUserId = userId,
-                pBalance = coinInfo.perIssueCount,
-                pAcquiredTotal = coinInfo.perIssueCount,
+                pBalance = 0,
+                pAcquiredTotal = 0,
                 pCoinInfo = coinInfo
             ).also(userCoinRepository::save)
 

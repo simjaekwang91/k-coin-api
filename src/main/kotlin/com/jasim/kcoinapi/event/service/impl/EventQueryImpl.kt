@@ -38,7 +38,6 @@ class EventQueryImpl(
         val entryCount = eventEntryRepository.countByRewardIdAndStatus(rewardId, EntryStatus.ENTERED).toInt()
 
         return RewardEntryDto(reward.rewardName, entryCount)
-
     }
 
     @Transactional(timeout = 10)

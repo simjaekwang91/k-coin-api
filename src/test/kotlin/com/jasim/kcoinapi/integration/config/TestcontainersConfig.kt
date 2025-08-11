@@ -1,4 +1,4 @@
-package com.jasim.kcoinapi.integration
+package com.jasim.kcoinapi.integration.config
 
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection

@@ -5,6 +5,7 @@ import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
 import com.jasim.kcoinapi.common.dto.response.ApiResponse
+import com.jasim.kcoinapi.integration.config.TestcontainersConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

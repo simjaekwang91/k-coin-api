@@ -1,12 +1,12 @@
 package com.jasim.kcoinapi.integration
 
 import com.jasim.kcoinapi.KCoinApiApplication
-import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.RewardEntryDto
-import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.dto.UserEntryDto
+import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
 import com.jasim.kcoinapi.coin.dto.response.ApiResponse
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -16,9 +16,10 @@ import org.springframework.context.annotation.Import
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
+import org.springframework.http.MediaType
+import org.springframework.http.RequestEntity
 import org.springframework.test.context.ActiveProfiles
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode
+import java.net.URI
 
 @SpringBootTest(
     classes = [KCoinApiApplication::class],
@@ -36,6 +37,7 @@ class EventApiIntegrationTest {
     private fun url(p: String) = "http://localhost:$port$p"
 
     @Test
+    @DisplayName("리워드 응모 현황 검증")
     fun `리워드1 응모 현황 - 시드 검증`() {
         val typeRef = object : ParameterizedTypeReference<ApiResponse<RewardEntryDto>>() {}
         val res = restTemplate.exchange(
@@ -51,12 +53,13 @@ class EventApiIntegrationTest {
 
         val data = body.data!!
         assertThat(data.rewardName).isEqualTo("1일 휴가권")
-        // 시드: 1001=ENTERED, 1002=CANCELLED → 현재 응모 카운트는 1이라고 가정
+        //유저: 1001=ENTERED, 1002=CANCELLED → Entered 상태의 값은 한개
         assertThat(data.entryCount).isEqualTo(1)
     }
 
     @Test
-    fun `사용자 응모 현황 조회 - 1001, 리워드1 ENTERED`() {
+    @DisplayName("사용자 리워드 응모 현황 검증 - 1001")
+    fun `사용자 응모 현황 조회 - 1001`() {
         val typeRef = object : ParameterizedTypeReference<ApiResponse<UserEntryDto>>() {}
         val res = restTemplate.exchange(
             url("/v1/event/user-reward-entry-summary/1/1/1001"),
@@ -70,6 +73,7 @@ class EventApiIntegrationTest {
         assertThat(body.status).isEqualTo(HttpStatus.OK.name)
 
         val data = body.data!!
+        //응모 정보가 있기에 리스트가 null 혹은 빈값이 되면 안된다.
         assertThat(data.userId).isEqualTo("1001")
         assertThat(data.entries).isNotNull
         assertThat(data.entries).isNotEmpty
@@ -83,7 +87,8 @@ class EventApiIntegrationTest {
     }
 
     @Test
-    fun `사용자 응모 현황 조회 - 1002, 리워드1 CANCELLED`() {
+    @DisplayName("사용자 리워드 응모 현황 검증 - 1002")
+    fun `사용자 응모 현황 조회 - 1002`() {
         val typeRef = object : ParameterizedTypeReference<ApiResponse<UserEntryDto>>() {}
         val res = restTemplate.exchange(
             url("/v1/event/user-reward-entry-summary/1/1/1002"),
@@ -92,6 +97,7 @@ class EventApiIntegrationTest {
             typeRef
         )
 
+        //리워드 취소 목록이 정상적으로 조회 되는지?
         assertThat(res.statusCode).isEqualTo(HttpStatus.OK)
         val body = res.body!!
         assertThat(body.status).isEqualTo(HttpStatus.OK.name)
@@ -104,9 +110,19 @@ class EventApiIntegrationTest {
     }
 
     @Test
-    fun `응모-취소 플로우 - 1003 리워드1`() {
+    @DisplayName("응모 및 응모 취소 로직 검증")
+    fun `응모-취소 검증`() {
         // 1003은 시드에서 코인 0 → 먼저 1개 발급(응모 1개 필요)
-        restTemplate.postForEntity(url("/v1/coins/issue-coin/1/1/1003"), null, Void::class.java)
+        val req = IssueCoinRequest(eventId = 1L, coinId = 1L, userId = "1003")
+
+        val request = RequestEntity
+            .post(URI.create(url("/v1/coins/issue-coin")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(req)
+
+        val typeRefIssueCoin = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
+        restTemplate.exchange(request, typeRefIssueCoin)
 
         // 응모 전 카운트 확인(시드 그대로 1)
         run {
@@ -124,7 +140,7 @@ class EventApiIntegrationTest {
         run {
             val typeRef = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
             val res = restTemplate.exchange(
-                url("/v1/event/entry-reward/1/1/1003?status=0"),
+                url("/v1/event/entry-reward/1/1/1003?status=ENTERED"),
                 HttpMethod.POST,
                 null,
                 typeRef
@@ -134,7 +150,7 @@ class EventApiIntegrationTest {
             assertThat(res.body!!.data).isTrue()
         }
 
-        // 응모 후 카운트 2로 증가 기대
+        // 응모 후 카운트 2로 증가
         run {
             val typeRef = object : ParameterizedTypeReference<ApiResponse<RewardEntryDto>>() {}
             val res = restTemplate.exchange(
@@ -163,7 +179,7 @@ class EventApiIntegrationTest {
         run {
             val typeRef = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
             val res = restTemplate.exchange(
-                url("/v1/event/entry-reward/1/1/1003?status=1"),
+                url("/v1/event/entry-reward/1/1/1003?status=CANCELLED"),
                 HttpMethod.POST,
                 null,
                 typeRef

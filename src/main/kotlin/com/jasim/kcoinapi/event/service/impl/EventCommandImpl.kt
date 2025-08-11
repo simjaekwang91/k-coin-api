@@ -5,6 +5,8 @@ import com.jasim.kcoinapi.coin.entity.CoinLogEntity.Reason
 import com.jasim.kcoinapi.coin.repository.CoinLogRepository
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
+import com.jasim.kcoinapi.common.enums.CommonEnums
+import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.event.entity.EventEntryEntity
@@ -33,7 +35,7 @@ class EventCommandImpl(
 ) : EventCommandService {
 
     @Transactional(timeout = 10)
-    override fun setReward(eventId: Long, rewardId: Long, userId: String, status: Int): Boolean {
+    override fun entryReward(eventId: Long, rewardId: Long, userId: String, status: EventEntryStatus): Boolean {
         //1) lock 획득
         lockRepository.lockWithTimeout(lockProperties.lockKey)
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
@@ -51,9 +53,9 @@ class EventCommandImpl(
             ?: throw CoinException(CoinErrorType.NOT_FOUND_USER_COIN)
 
         //4)응모/취소 하기
-        when (EntryStatus.fromCode(status)) {
+        when (status) {
             //응모
-            EntryStatus.ENTERED -> {
+            EventEntryStatus.ENTERED -> {
                 if (eventEntryRepository.existsByRewardIdAndUserIdAndStatus(rewardId, userId, EntryStatus.ENTERED)) {
                     throw EventException(EventErrorType.ALREADY_ENTERED)
                 }
@@ -73,11 +75,11 @@ class EventCommandImpl(
                 )
             }
             //응모취소
-            EntryStatus.CANCELLED -> {
-                userCoinInfo.cancelCoin(reward.requiredCoins)
+            EventEntryStatus.CANCELLED -> {
                 val eventEntryInfo = eventEntryRepository.findByRewardIdAndUserIdAndStatus(rewardId, userId, EntryStatus.ENTERED)
                     ?: throw EventException(EventErrorType.NOT_FOUND_ENTERED_LOG)
 
+                userCoinInfo.cancelCoin(reward.requiredCoins)
                 eventEntryInfo.cancel()
                 // 5) 로깅
                 coinLogRepository.save(

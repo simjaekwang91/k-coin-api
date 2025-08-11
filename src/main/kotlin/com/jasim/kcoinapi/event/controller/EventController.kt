@@ -1,6 +1,7 @@
 package com.jasim.kcoinapi.event.controller
 
 import com.jasim.kcoinapi.coin.dto.response.ApiResponse
+import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
 import com.jasim.kcoinapi.event.service.EventCommandService
 import com.jasim.kcoinapi.event.service.EventQueryService
 import io.swagger.v3.oas.annotations.Operation
@@ -27,8 +28,8 @@ class EventController(
         @PathVariable eventId: Long,
         @PathVariable rewardId: Long,
         @PathVariable userId: String,
-        @RequestParam("status") status: Int
-    ) = ApiResponse(HttpStatus.OK.name, eventCommandService.setReward(eventId, rewardId, userId, status))
+        @RequestParam("status") status: EventEntryStatus
+    ) = ApiResponse(HttpStatus.OK.name, eventCommandService.entryReward(eventId, rewardId, userId, status))
 
     @Operation(
         summary = "휴가 쿠폰별 전체 응모 현황 조회"

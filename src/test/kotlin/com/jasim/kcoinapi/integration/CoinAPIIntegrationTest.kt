@@ -3,6 +3,7 @@ package com.jasim.kcoinapi.integration
 import com.jasim.kcoinapi.KCoinApiApplication
 import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.UserCoinDto
+import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
 import com.jasim.kcoinapi.coin.dto.response.ApiResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -12,9 +13,14 @@ import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.RequestEntity
 import org.springframework.test.context.ActiveProfiles
+import java.net.URI
+import java.net.http.HttpHeaders
 
 @SpringBootTest(
     classes = [KCoinApiApplication::class],
@@ -34,13 +40,16 @@ class CoinApiIntegrationTest {
 
     @Test
     fun `응모 코인 발급 성공`() {
+        val req = IssueCoinRequest(eventId = 1L, coinId = 1L, userId = "1001")
+
+        val request = RequestEntity
+            .post(URI.create(url("/v1/coins/issue-coin")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(req)
+
         val typeRef = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
-        val res = restTemplate.exchange(
-            url("/v1/coins/issue-coin/1/1/1001"),
-            HttpMethod.POST,
-            null,
-            typeRef
-        )
+        val res = restTemplate.exchange(request, typeRef)
 
         assertThat(res.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(res.body!!.status).isEqualTo(HttpStatus.OK.name)
@@ -97,7 +106,16 @@ class CoinApiIntegrationTest {
     @Test
     fun `사용자 응모 코인 수량 조회`() {
         // 사전 발급 한 번 해두고 (신규 유저)
-        restTemplate.postForEntity(url("/v1/coins/issue-coin/1/1/testUser"), null, Void::class.java)
+        val req = IssueCoinRequest(eventId = 1L, coinId = 1L, userId = "testUser")
+
+        val request = RequestEntity
+            .post(URI.create(url("/v1/coins/issue-coin")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(req)
+
+        val typeRefIssueCoin = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
+        restTemplate.exchange(request, typeRefIssueCoin)
 
         val typeRef = object : ParameterizedTypeReference<ApiResponse<UserCoinDto>>() {}
         val res = restTemplate.exchange(

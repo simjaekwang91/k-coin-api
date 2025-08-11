@@ -7,6 +7,7 @@ import com.jasim.kcoinapi.coin.repository.CoinLogRepository
 import com.jasim.kcoinapi.coin.repository.CoinRepository
 import com.jasim.kcoinapi.coin.repository.UserCoinRepository
 import com.jasim.kcoinapi.common.entity.ProcessLockEntity
+import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.event.entity.EventEntity
@@ -119,7 +120,7 @@ class EventServiceTest {
     @DisplayName("응모 성공 → 잔액 감소")
     fun enter_success() {
         // when
-        service.setReward(eventId, rewardId, userId, EntryStatus.ENTERED.code)
+        service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
 
         // then: 3 -> 1 (requiredCoins = 2)
         assertThat(userCoinFixture.balance).isEqualTo(1)
@@ -137,7 +138,7 @@ class EventServiceTest {
 
         // then
         assertThatThrownBy {
-            service.setReward(eventId, rewardId, userId, EntryStatus.ENTERED.code)
+            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
         }
             .isInstanceOf(EventException::class.java)
             .hasMessageContaining("이미 응모 되었습니다. 중복 응모는 불가능 합니다.")
@@ -163,7 +164,7 @@ class EventServiceTest {
             .thenReturn(entered)
 
         // when
-        service.setReward(eventId, rewardId, userId, EntryStatus.CANCELLED.code)
+        service.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
 
         // then: 1 + 2 = 3 으로 복구
         assertThat(afterEnter.balance).isEqualTo(3)

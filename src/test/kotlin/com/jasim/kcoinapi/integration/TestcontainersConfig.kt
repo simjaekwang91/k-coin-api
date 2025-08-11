@@ -11,11 +11,10 @@ import org.testcontainers.junit.jupiter.Testcontainers
 class TestcontainersConfig {
 
     @Bean(initMethod = "start", destroyMethod = "stop")
-    @ServiceConnection  // Spring Boot 3.1+ 가 DataSource 자동 설정
+    @ServiceConnection  // Spring Boot 3.1+ 가
     fun mysql(): MySQLContainer<*> =
         MySQLContainer("mysql:8.0.42")
             .withDatabaseName("kcoin")
             .withUsername("test")
             .withPassword("test")
-            .withInitScript("db/coin-schema.sql")
 }

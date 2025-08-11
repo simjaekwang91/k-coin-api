@@ -3,7 +3,7 @@ package com.jasim.kcoinapi.coin.controller
 import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
-import com.jasim.kcoinapi.coin.dto.response.ApiResponse
+import com.jasim.kcoinapi.common.dto.response.ApiResponse
 import com.jasim.kcoinapi.coin.service.CoinCommandService
 import com.jasim.kcoinapi.coin.service.CoinQueryService
 import io.swagger.v3.oas.annotations.Operation

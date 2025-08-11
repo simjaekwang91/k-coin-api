@@ -1,4 +1,4 @@
-package com.jasim.kcoinapi.coin.dto.response
+package com.jasim.kcoinapi.common.dto.response
 
 data class ApiResponse <T> (
     val status: String,

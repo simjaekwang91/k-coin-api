@@ -1,10 +1,12 @@
 package com.jasim.kcoinapi.integration
 
 import com.jasim.kcoinapi.KCoinApiApplication
-import com.jasim.kcoinapi.coin.dto.RewardEntryDto
-import com.jasim.kcoinapi.coin.dto.UserEntryDto
+import com.jasim.kcoinapi.event.dto.RewardEntryDto
+import com.jasim.kcoinapi.event.dto.UserEntryDto
 import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
-import com.jasim.kcoinapi.coin.dto.response.ApiResponse
+import com.jasim.kcoinapi.common.dto.response.ApiResponse
+import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
+import com.jasim.kcoinapi.event.dto.request.UserEntryRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -138,13 +140,18 @@ class EventApiIntegrationTest {
 
         // 응모 (status=0)
         run {
+            val entryRequestBody =
+                UserEntryRequest(eventId = 1L, rewardId = 1L, userId = "1003", entryStatus = EventEntryStatus.ENTERED)
+
+            val entryRequest = RequestEntity
+                .post(URI.create(url("/v1/event/entry-reward")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(entryRequestBody)
+
             val typeRef = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
-            val res = restTemplate.exchange(
-                url("/v1/event/entry-reward/1/1/1003?status=ENTERED"),
-                HttpMethod.POST,
-                null,
-                typeRef
-            )
+            val res = restTemplate.exchange(entryRequest, typeRef)
+
             assertThat(res.statusCode).isEqualTo(HttpStatus.OK)
             assertThat(res.body!!.status).isEqualTo(HttpStatus.OK.name)
             assertThat(res.body!!.data).isTrue()
@@ -177,13 +184,18 @@ class EventApiIntegrationTest {
 
         // 취소 (status=1)
         run {
+            val entryRequestBody =
+                UserEntryRequest(eventId = 1L, rewardId = 1L, userId = "1003", entryStatus = EventEntryStatus.CANCELLED)
+
+            val entryRequest = RequestEntity
+                .post(URI.create(url("/v1/event/entry-reward")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(entryRequestBody)
+
             val typeRef = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
-            val res = restTemplate.exchange(
-                url("/v1/event/entry-reward/1/1/1003?status=CANCELLED"),
-                HttpMethod.POST,
-                null,
-                typeRef
-            )
+            val res = restTemplate.exchange(entryRequest, typeRef)
+
             assertThat(res.statusCode).isEqualTo(HttpStatus.OK)
             assertThat(res.body!!.status).isEqualTo(HttpStatus.OK.name)
             assertThat(res.body!!.data).isTrue()

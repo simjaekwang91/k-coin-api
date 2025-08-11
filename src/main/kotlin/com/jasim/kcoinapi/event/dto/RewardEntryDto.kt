@@ -1,4 +1,4 @@
-package com.jasim.kcoinapi.coin.dto
+package com.jasim.kcoinapi.event.dto
 
 data class RewardEntryDto (
     val rewardName: String,

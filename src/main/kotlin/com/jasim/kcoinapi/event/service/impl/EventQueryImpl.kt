@@ -1,7 +1,7 @@
 package com.jasim.kcoinapi.event.service.impl
 
-import com.jasim.kcoinapi.coin.dto.RewardEntryDto
-import com.jasim.kcoinapi.coin.dto.UserEntryDto
+import com.jasim.kcoinapi.event.dto.RewardEntryDto
+import com.jasim.kcoinapi.event.dto.UserEntryDto
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
 import com.jasim.kcoinapi.event.entity.EventEntryEntity.EntryStatus

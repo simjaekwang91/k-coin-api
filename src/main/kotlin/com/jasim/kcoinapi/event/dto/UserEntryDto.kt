@@ -1,4 +1,4 @@
-package com.jasim.kcoinapi.coin.dto
+package com.jasim.kcoinapi.event.dto
 
 import com.jasim.kcoinapi.event.entity.EventEntryEntity
 import java.time.Instant

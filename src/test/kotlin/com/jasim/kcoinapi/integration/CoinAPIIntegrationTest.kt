@@ -4,7 +4,7 @@ import com.jasim.kcoinapi.KCoinApiApplication
 import com.jasim.kcoinapi.coin.dto.CoinDto
 import com.jasim.kcoinapi.coin.dto.UserCoinDto
 import com.jasim.kcoinapi.coin.dto.request.IssueCoinRequest
-import com.jasim.kcoinapi.coin.dto.response.ApiResponse
+import com.jasim.kcoinapi.common.dto.response.ApiResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,14 +13,12 @@ import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.core.ParameterizedTypeReference
-import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.RequestEntity
 import org.springframework.test.context.ActiveProfiles
 import java.net.URI
-import java.net.http.HttpHeaders
 
 @SpringBootTest(
     classes = [KCoinApiApplication::class],

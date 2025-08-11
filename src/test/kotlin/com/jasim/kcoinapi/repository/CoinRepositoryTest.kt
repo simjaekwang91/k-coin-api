@@ -48,6 +48,7 @@ class CoinRepositoryTest {
     }
 
     @Test
+    @DisplayName("저장, 조회시 정상 테스트")
     fun `저장 및 조회 테스트`() {
         // given
         val saved = coinRepository.saveAndFlush(baseCoin)
@@ -73,8 +74,8 @@ class CoinRepositoryTest {
     }
 
     @Test
-    @DisplayName("decrementCoinCount() 호출 후, DB에 반영된다")
-    fun `응모_코인_할당_테스트`() {
+    @DisplayName("코인 발급 이후 잔여코인 수량 DB 저장 검증")
+    fun `응모_코인_발급_테스트`() {
         // given
         val start = baseCoin.remainCoinCount
         val coin = coinRepository.saveAndFlush(baseCoin)
@@ -87,8 +88,8 @@ class CoinRepositoryTest {
     }
 
     @Test
-    @DisplayName("decrementCoinCount() 는 남은 코인이 0일 때 예외를 던진다")
-    fun `응모_코인_할당_예외_테스트`() {
+    @DisplayName("코인 발급시 잔여 코인이 없을때 실패 검증")
+    fun `응모_코인_발급_예외_테스트`() {
         var save = coinRepository.saveAndFlush(baseCoin)
         var find: CoinEntity
 

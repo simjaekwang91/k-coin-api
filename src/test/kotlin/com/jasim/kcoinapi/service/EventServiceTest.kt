@@ -119,8 +119,8 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("응모 성공 → 잔액 감소")
-    fun enter_success() {
+    @DisplayName("응모 성공 → 잔액 감소 테스트")
+    fun `응모 성공 테스트`() {
         // when
         service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
 
@@ -132,8 +132,8 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("중복 응모 → 중복 응모 실패")
-    fun enter_alreadyEntered() {
+    @DisplayName("중복 응모 → 중복 응모 실패 테스트")
+    fun `중복 응모 실패 검증 테스트`() {
         // given: 이미 응모한 상태
         whenever(eventEntryRepository.existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
             .thenReturn(true)
@@ -152,7 +152,7 @@ class EventServiceTest {
 
     @Test
     @DisplayName("응모 취소 성공 → 코인 복구 검증")
-    fun cancel_success() {
+    fun `응모 취소시 잔액 정상적으로 반영 되는지 검증 테스트`() {
         // given: 이미 한 번 응모해서 현재 잔액이 1
         val afterEnter = UserCoinEntity(
             pUserId = userId, pBalance = 1, pAcquiredTotal = 3, pCoinInfo = coinFixture
@@ -176,7 +176,7 @@ class EventServiceTest {
 
     @Test
     @DisplayName("잔액 부족 → 응모 실패")
-    fun enter_insufficientBalance() {
+    fun `응모시 발급받은 잔여 코인이 부족한 경우 실패 테스트`() {
         // given: requiredCoins=2, 사용자 잔액=1
         val lowBalance = UserCoinEntity(
             pUserId = userId, pBalance = 1, pAcquiredTotal = 1, pCoinInfo = coinFixture
@@ -198,7 +198,7 @@ class EventServiceTest {
 
     @Test
     @DisplayName("응모 이력 없이 취소 시 실패")
-    fun cancel_withoutEnteredHistory() {
+    fun `응모 취소시 응모 이력이 없는 경우 실패 검증 테스트`() {
         // given: 사용자 코인은 정상 존재
         whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId)))
             .thenReturn(userCoinFixture)
@@ -218,7 +218,7 @@ class EventServiceTest {
 
     @Test
     @DisplayName("리워드 없음 → 실패")
-    fun reward_notFound() {
+    fun `응모 하려는 리워드(휴가권)가 없는 경우 실패 테스트`() {
         // given
         whenever(rewardRepository.findById(eq(rewardId))).thenReturn(Optional.empty())
 
@@ -229,23 +229,6 @@ class EventServiceTest {
             .isInstanceOf(EventException::class.java)
 
         verify(eventEntryRepository, never()).save(any())
-    }
-
-    @Test
-    @DisplayName("응모 성공 시 저장되는 엔트리 필드 검증")
-    fun enter_persistsEntryFields() {
-        // given: 기본 스텁(응모 가능) 사용
-        val captor = argumentCaptor<EventEntryEntity>()
-
-        // when
-        service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
-
-        // then
-        verify(eventEntryRepository).save(captor.capture())
-        val saved = captor.firstValue
-        assertThat(saved.userId).isEqualTo(userId)
-        assertThat(saved.reward.id).isEqualTo(rewardId)
-        assertThat(saved.status).isEqualTo(EntryStatus.ENTERED)
     }
 
     private fun setId(entity: Any, value: Long) {

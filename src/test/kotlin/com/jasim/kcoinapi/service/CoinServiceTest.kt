@@ -98,8 +98,8 @@ class CoinServiceTest {
     }
 
     @Test
-    @DisplayName("issueCoin 성공 → 재고 1 감소 + 로그 1건 저장")
-    fun issue_success() {
+    @DisplayName("issueCoin(코인 발급) 정상 검증")
+    fun `발급 성공 테스트`() {
         whenever(coinRepository.findById(eq(coinId))).thenReturn(Optional.of(coinFixture))
         whenever(userCoinRepository.findByUserIdAndCoinId(eq(userId), eq(coinId))).thenReturn(null)
         whenever(coinLogRepository.save(any<CoinLogEntity>())).thenAnswer { it.arguments[0] as CoinLogEntity }
@@ -118,7 +118,7 @@ class CoinServiceTest {
 
     @Test
     @DisplayName("코인 없음 → CoinException(발급 요청한 코인이 없습니다)")
-    fun issue_coinNotFound() {
+    fun `존재하지 않는 코인 발급 요청 실패 테스트`() {
         whenever(coinRepository.findById(eq(coinId))).thenReturn(Optional.empty())
 
         assertThatThrownBy {
@@ -134,8 +134,8 @@ class CoinServiceTest {
     }
 
     @Test
-    @DisplayName("재고 0 → 도메인 로직이 던지는 예외 전파 (남은 코인 수량 없음 등)")
-    fun issue_outOfStock() {
+    @DisplayName("잔여 코인 0 → 실패 테스트 ")
+    fun `코인 발급시 잔여 코인이 없을때 실패 검증`() {
         // 재고 0 코인
         val zero = CoinEntity(
             pPerUserLimit = 3,

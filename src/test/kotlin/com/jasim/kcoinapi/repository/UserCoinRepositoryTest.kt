@@ -57,7 +57,7 @@ class UserCoinRepositoryTest() {
     }
 
     @Test
-    @DisplayName("저장 시 기본 필드 및 Audit(created/updated) 자동 설정 확인")
+    @DisplayName("저장 시 기본 필드 및 Audit 확인")
     fun `저장_조회_테스트`() {
         // given
         val before = Instant.now()
@@ -77,6 +77,7 @@ class UserCoinRepositoryTest() {
     }
 
     @Test
+    @DisplayName("코인 응모 이후 값이 정상적으로 감소 하여 저장되는지 검증")
     fun `코인 응모시 정상적으로 1감소 테스트`() {
         // given
         val persisted = userCoinRepository.saveAndFlush(baseEntity)
@@ -91,7 +92,7 @@ class UserCoinRepositoryTest() {
     }
 
     @Test
-    @DisplayName("entryCoin(): balance 또는 acquiredTotal이 0 이면 예외 발생")
+    @DisplayName("보유 코인으로 응모시 잔여코인이 응모 요구량보다 많은 경우 실패 테스트")
     fun `보유코인 및 사용가능 코인 유효성 동작 테스트`() {
         //given
         val uc2 = userCoinRepository.saveAndFlush(
@@ -101,7 +102,7 @@ class UserCoinRepositoryTest() {
     }
 
     @Test
-    @DisplayName("cancelCoin(): balance만 1 감소 후 DB 반영")
+    @DisplayName("응모 취소 동작시 잔여 코인 수량 1 감소 후 DB 반영 테스트")
     fun `취소_동작시_잔액1 증가_테스트`() {
         // given
         val persisted = userCoinRepository.saveAndFlush(baseEntity)

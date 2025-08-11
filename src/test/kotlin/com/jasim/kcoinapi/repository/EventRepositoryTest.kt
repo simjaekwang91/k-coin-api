@@ -36,7 +36,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    @DisplayName("저장 및 조회: 기본 필드와 연관관계, Audit 설정 검증")
+    @DisplayName("저장 및 조회 기본 필드와 Audit 검증")
     fun `저장_조회_테스트`() {
         // given
         val before = Instant.now()

@@ -9,6 +9,7 @@ import com.jasim.kcoinapi.integration.config.TestcontainersConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.DisplayName
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
@@ -45,6 +46,7 @@ class CoinApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("응모 코인 발급 성공 테스트")
     fun `응모 코인 발급 성공`() {
         val req = IssueCoinRequest(eventId = 1L, coinId = 1L, userId = "1001")
 
@@ -63,6 +65,7 @@ class CoinApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("전체 코인 현황 조회")
     fun `전체 응모 코인 현황 조회`() {
         val typeRef = object : ParameterizedTypeReference<ApiResponse<CoinDto>>() {}
         val res = restTemplate.exchange(
@@ -96,7 +99,7 @@ class CoinApiIntegrationTest {
         assertThat(u1003.acquiredTotal).isEqualTo(0)
         assertThat(u1003.balance).isEqualTo(0)
 
-        // 전체 유저 공통 불변식 검증
+        // 전체 유저 공통 검증
         //  - 획득 코인은 음수가 될 수 없다
         //  - 현재 잔여 코인은 누적 획득량을 초과할 수 없음
         //  - 누적 획득량은 사용자 최대 한도(시드: 3)를 넘지 않음
@@ -110,8 +113,9 @@ class CoinApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("사용자별 응모 코인 수량 조회 전체 로직 검증 테스트")
     fun `사용자 응모 코인 수량 조회`() {
-        // 사전 발급 한 번 해두고 (신규 유저)
+        // 코인 발급
         val req = IssueCoinRequest(eventId = 1L, coinId = 1L, userId = "testUser")
 
         val request = RequestEntity
@@ -138,8 +142,7 @@ class CoinApiIntegrationTest {
         // 상세 값 검증
         assertThat(data.userId).isEqualTo("testUser")
 
-        // 현재 구현(신규 발급 2회 카운트) 기준 기대값: 2
-        // 만약 신규 발급 시 중복 카운팅을 수정했다면 기대값을 1로 변경하세요.
+        //잔여 코인 1로 예상
         assertThat(data.balance).isEqualTo(1)
         assertThat(data.acquiredTotal).isEqualTo(1)
 

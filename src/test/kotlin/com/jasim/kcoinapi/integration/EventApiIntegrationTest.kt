@@ -64,7 +64,9 @@ class EventApiIntegrationTest {
         val data = body.data!!
         assertThat(data.rewardName).isEqualTo("1일 휴가권")
         //유저: 1001=ENTERED, 1002=CANCELLED → Entered 상태의 값은 한개
-        assertThat(data.entryCount).isEqualTo(1)
+        assertThat(data.totalEntryCount).isEqualTo(2)
+        assertThat(data.canceledCount).isEqualTo(1)
+        assertThat(data.uniqueEntryCount).isEqualTo(1)
     }
 
     @Test
@@ -134,7 +136,7 @@ class EventApiIntegrationTest {
         val typeRefIssueCoin = object : ParameterizedTypeReference<ApiResponse<Boolean>>() {}
         restTemplate.exchange(request, typeRefIssueCoin)
 
-        // 응모 전 카운트 확인(시드 그대로 1)
+        // 응모 전 카운트 확인(초기값 그대로 2)
         run {
             val typeRef = object : ParameterizedTypeReference<ApiResponse<RewardEntryDto>>() {}
             val res = restTemplate.exchange(
@@ -143,7 +145,10 @@ class EventApiIntegrationTest {
                 null,
                 typeRef
             )
-            assertThat(res.body!!.data!!.entryCount).isEqualTo(1)
+            assertThat(res.body!!.data!!.totalEntryCount).isEqualTo(2)
+            assertThat(res.body!!.data!!.canceledCount).isEqualTo(1)
+            assertThat(res.body!!.data!!.uniqueEntryCount).isEqualTo(1)
+
         }
 
         // 응모 (status=0)
@@ -165,7 +170,7 @@ class EventApiIntegrationTest {
             assertThat(res.body!!.data).isTrue()
         }
 
-        // 응모 후 카운트 2로 증가
+        // 응모 후 카운트 증가
         run {
             val typeRef = object : ParameterizedTypeReference<ApiResponse<RewardEntryDto>>() {}
             val res = restTemplate.exchange(
@@ -174,7 +179,9 @@ class EventApiIntegrationTest {
                 null,
                 typeRef
             )
-            assertThat(res.body!!.data!!.entryCount).isEqualTo(2)
+            assertThat(res.body!!.data!!.totalEntryCount).isEqualTo(3)
+            assertThat(res.body!!.data!!.canceledCount).isEqualTo(1)
+            assertThat(res.body!!.data!!.uniqueEntryCount).isEqualTo(2)
         }
 
         // 사용자 상태 확인 → ENTERED
@@ -218,7 +225,9 @@ class EventApiIntegrationTest {
                 null,
                 typeRef
             )
-            assertThat(res.body!!.data!!.entryCount).isEqualTo(1)
+            assertThat(res.body!!.data!!.totalEntryCount).isEqualTo(3)
+            assertThat(res.body!!.data!!.canceledCount).isEqualTo(2)
+            assertThat(res.body!!.data!!.uniqueEntryCount).isEqualTo(1)
         }
 
         // 사용자 상태 확인 → CANCELLED

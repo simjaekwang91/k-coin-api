@@ -35,9 +35,15 @@ class EventQueryImpl(
         }
 
         //3)응모 수량 확인
-        val entryCount = eventEntryRepository.countByRewardIdAndStatus(rewardId, EntryStatus.ENTERED).toInt()
+        val entryInfo = eventEntryRepository.findRewardEntrySummary(rewardId, EntryStatus.ENTERED)
+            ?: RewardEntryDto(
+                rewardName = reward.rewardName,
+                totalEntryCount = 0,
+                canceledCount = 0,
+                uniqueEntryCount = 0
+            )
 
-        return RewardEntryDto(reward.rewardName, entryCount)
+        return entryInfo
     }
 
     @Transactional(timeout = 10)

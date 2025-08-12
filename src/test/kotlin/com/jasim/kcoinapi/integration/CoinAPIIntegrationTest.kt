@@ -142,7 +142,7 @@ class CoinApiIntegrationTest {
         // 상세 값 검증
         assertThat(data.userId).isEqualTo("testUser")
 
-        //잔여 코인 1로 예상
+        // 잔여 코인 1
         assertThat(data.balance).isEqualTo(1)
         assertThat(data.acquiredTotal).isEqualTo(1)
 
@@ -150,7 +150,7 @@ class CoinApiIntegrationTest {
         assertThat(data.balance).isGreaterThanOrEqualTo(0)
         assertThat(data.acquiredTotal).isGreaterThanOrEqualTo(data.balance)
 
-        // 상한선 검증(퍼 유저 한도 3이 기본 데이터임)
+        // 상한선 검증(유저 코인 보유 한도는 3)
         assertThat(data.acquiredTotal).isLessThanOrEqualTo(3)
     }
 }

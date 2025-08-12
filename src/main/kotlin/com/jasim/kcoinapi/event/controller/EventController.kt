@@ -21,7 +21,7 @@ class EventController(
 ) {
 
     @Operation(
-        summary = "휴가 쿠폰 응모/취소"
+        summary = "휴가 쿠폰 응모/취소(ENTERED/CANCELLED)"
     )
     @PostMapping("/entry-reward")
     fun entryReward(

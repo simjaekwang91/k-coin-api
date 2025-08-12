@@ -10,6 +10,9 @@ import com.jasim.kcoinapi.common.entity.ProcessLockEntity
 import com.jasim.kcoinapi.common.enums.CommonEnums.EventEntryStatus
 import com.jasim.kcoinapi.common.repository.ProcessLockRepository
 import com.jasim.kcoinapi.config.LockProperties
+import com.jasim.kcoinapi.event.dto.RewardEntryDto
+import com.jasim.kcoinapi.event.dto.UserEntryDetail
+import com.jasim.kcoinapi.event.dto.UserEntryDto
 import com.jasim.kcoinapi.event.entity.EventEntity
 import com.jasim.kcoinapi.event.entity.EventEntryEntity
 import com.jasim.kcoinapi.event.entity.EventEntryEntity.EntryStatus
@@ -17,6 +20,7 @@ import com.jasim.kcoinapi.event.entity.RewardEntity
 import com.jasim.kcoinapi.event.repository.EventEntryRepository
 import com.jasim.kcoinapi.event.repository.RewardRepository
 import com.jasim.kcoinapi.event.service.impl.EventCommandImpl
+import com.jasim.kcoinapi.event.service.impl.EventQueryImpl
 import com.jasim.kcoinapi.exception.CoinException
 import com.jasim.kcoinapi.exception.DBException
 import com.jasim.kcoinapi.exception.EventException
@@ -32,7 +36,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.quality.Strictness
 import org.mockito.junit.jupiter.MockitoSettings
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
@@ -48,15 +51,32 @@ import java.util.Optional
 @MockitoSettings(strictness = Strictness.LENIENT) // 필요 시 제거 가능
 class EventServiceTest {
 
-    @Mock lateinit var eventEntryRepository: EventEntryRepository
-    @Mock lateinit var rewardRepository: RewardRepository
-    @Mock lateinit var coinRepository: CoinRepository
-    @Mock lateinit var userCoinRepository: UserCoinRepository
-    @Mock lateinit var lockRepository: ProcessLockRepository
-    @Mock lateinit var coinLogRepository: CoinLogRepository
-    @Mock lateinit var lockProperties: LockProperties
+    @Mock
+    lateinit var eventEntryRepository: EventEntryRepository
 
-    @InjectMocks lateinit var service: EventCommandImpl
+    @Mock
+    lateinit var rewardRepository: RewardRepository
+
+    @Mock
+    lateinit var coinRepository: CoinRepository
+
+    @Mock
+    lateinit var userCoinRepository: UserCoinRepository
+
+    @Mock
+    lateinit var lockRepository: ProcessLockRepository
+
+    @Mock
+    lateinit var coinLogRepository: CoinLogRepository
+
+    @Mock
+    lateinit var lockProperties: LockProperties
+
+    @InjectMocks
+    lateinit var eventCommandService: EventCommandImpl
+
+    @InjectMocks
+    lateinit var eventQueryService: EventQueryImpl
 
     private val userId = "u1"
     private val eventId = 10L
@@ -93,7 +113,7 @@ class EventServiceTest {
 
         setId(eventFixture, eventId)
         setId(rewardFixture, rewardId)
-        setId(coinFixture,   coinId)
+        setId(coinFixture, coinId)
 
         whenever(lockProperties.lockKey).thenReturn("global")
         doReturn(ProcessLockEntity()).`when`(lockRepository).lockWithTimeout(any())
@@ -104,7 +124,13 @@ class EventServiceTest {
             .thenReturn(userCoinFixture)
 
         // 기본: 아직 응모 안 함
-        whenever(eventEntryRepository.existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+        whenever(
+            eventEntryRepository.existsByRewardIdAndUserIdAndStatus(
+                eq(rewardId),
+                eq(userId),
+                eq(EntryStatus.ENTERED)
+            )
+        )
             .thenReturn(false)
         // 취소 분기에서만 사용, 기본은 null
         whenever(eventEntryRepository.findByRewardIdAndUserId(eq(rewardId), eq(userId)))
@@ -121,11 +147,15 @@ class EventServiceTest {
     @DisplayName("응모 성공 → 잔액 감소 테스트")
     fun `응모 성공 테스트`() {
         // when
-        service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+        eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
 
         // then: 3 -> 1 (requiredCoins = 2)
         assertThat(userCoinFixture.balance).isEqualTo(1)
-        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED))
+        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(
+            eq(rewardId),
+            eq(userId),
+            eq(EntryStatus.ENTERED)
+        )
         verify(eventEntryRepository).save(any())
         verify(coinLogRepository).save(any())
     }
@@ -134,19 +164,29 @@ class EventServiceTest {
     @DisplayName("중복 응모 → 중복 응모 실패 테스트")
     fun `중복 응모 실패 검증 테스트`() {
         // given: 이미 응모한 상태
-        whenever(eventEntryRepository.existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+        whenever(
+            eventEntryRepository.existsByRewardIdAndUserIdAndStatus(
+                eq(rewardId),
+                eq(userId),
+                eq(EntryStatus.ENTERED)
+            )
+        )
             .thenReturn(true)
 
         // then
         assertThatThrownBy {
-            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+            eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
         }
             .isInstanceOf(EventException::class.java)
             .hasMessageContaining("이미 응모 되었습니다. 중복 응모는 불가능 합니다.")
 
-        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED))
+        verify(eventEntryRepository).existsByRewardIdAndUserIdAndStatus(
+            eq(rewardId),
+            eq(userId),
+            eq(EntryStatus.ENTERED)
+        )
         verify(eventEntryRepository, never()).save(any())
-        verify(coinLogRepository,  never()).save(any())
+        verify(coinLogRepository, never()).save(any())
     }
 
     @Test
@@ -161,11 +201,17 @@ class EventServiceTest {
 
         // 취소 시에는 기존 엔트리 하나가 있어야 함
         val entered = EventEntryEntity(userId, EntryStatus.ENTERED, rewardFixture)
-        whenever(eventEntryRepository.findByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EntryStatus.ENTERED)))
+        whenever(
+            eventEntryRepository.findByRewardIdAndUserIdAndStatus(
+                eq(rewardId),
+                eq(userId),
+                eq(EntryStatus.ENTERED)
+            )
+        )
             .thenReturn(entered)
 
         // when
-        service.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
+        eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
 
         // then: 1 + 2 = 3 으로 복구
         assertThat(afterEnter.balance).isEqualTo(3)
@@ -185,13 +231,13 @@ class EventServiceTest {
 
         // when + then
         assertThatThrownBy {
-            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+            eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
         }
             .isInstanceOf(CoinException::class.java)
             .hasMessageContaining("잔여 코인")
 
         verify(eventEntryRepository, never()).save(any())
-        verify(coinLogRepository,  never()).save(any())
+        verify(coinLogRepository, never()).save(any())
     }
 
     @Test
@@ -202,12 +248,18 @@ class EventServiceTest {
             .thenReturn(userCoinFixture)
 
         // 응모 이력 없음
-        whenever(eventEntryRepository.findByRewardIdAndUserIdAndStatus(eq(rewardId), eq(userId), eq(EventEntryEntity.EntryStatus.ENTERED)))
+        whenever(
+            eventEntryRepository.findByRewardIdAndUserIdAndStatus(
+                eq(rewardId),
+                eq(userId),
+                eq(EventEntryEntity.EntryStatus.ENTERED)
+            )
+        )
             .thenReturn(null)
 
         // when + then
         assertThatThrownBy {
-            service.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
+            eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.CANCELLED)
         }
             .isInstanceOf(EventException::class.java)
 
@@ -222,11 +274,131 @@ class EventServiceTest {
 
         // when + then
         assertThatThrownBy {
-            service.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
+            eventCommandService.entryReward(eventId, rewardId, userId, EventEntryStatus.ENTERED)
         }
             .isInstanceOf(EventException::class.java)
 
         verify(eventEntryRepository, never()).save(any())
+    }
+
+
+    @Test
+    @DisplayName("응모 이력 존재 시 반환")
+    fun `전체 응모 현황 조회 테스트`() {
+        val summary = RewardEntryDto(
+            rewardName = rewardFixture.rewardName,
+            totalEntryCount = 5,
+            canceledCount = 1,
+            uniqueEntryCount = 4
+        )
+        whenever(
+            eventEntryRepository.findRewardEntrySummary(
+                eq(rewardId),
+                eq(EntryStatus.ENTERED),
+                eq(EntryStatus.CANCELLED)
+            )
+        ).thenReturn(summary)
+
+        val result = eventQueryService.getAllEntryInfoByReward(eventId, rewardId)
+
+        assertThat(result.rewardName).isEqualTo("1일 휴가권")
+        assertThat(result.totalEntryCount).isEqualTo(5)
+        assertThat(result.canceledCount).isEqualTo(1)
+        assertThat(result.uniqueEntryCount).isEqualTo(4)
+
+        verify(lockRepository).lockWithTimeout(eq("global"))
+        verify(rewardRepository).findById(eq(rewardId))
+        verify(eventEntryRepository).findRewardEntrySummary(
+            eq(rewardId),
+            eq(EntryStatus.ENTERED),
+            eq(EntryStatus.CANCELLED)
+        )
+    }
+
+    @Test
+    @DisplayName("해당 데이터에 응모 이력 없으면 0 반환")
+    fun `응모 이력 없을 경우 0 반환 검증`() {
+        whenever(
+            eventEntryRepository.findRewardEntrySummary(
+                eq(rewardId),
+                eq(EntryStatus.ENTERED),
+                eq(EntryStatus.CANCELLED)
+            )
+        ).thenReturn(null)
+
+        val result = eventQueryService.getAllEntryInfoByReward(eventId, rewardId)
+
+        assertThat(result.rewardName).isEqualTo("1일 휴가권")
+        assertThat(result.totalEntryCount).isEqualTo(0)
+        assertThat(result.canceledCount).isEqualTo(0)
+        assertThat(result.uniqueEntryCount).isEqualTo(0)
+
+        verify(lockRepository).lockWithTimeout(eq("global"))
+        verify(rewardRepository).findById(eq(rewardId))
+    }
+
+    @Test
+    @DisplayName("요청 리워드 없음 → EventException")
+    fun `조회 요청한 리워드(휴가권)이 없는 경우 실패 검증`() {
+        whenever(rewardRepository.findById(eq(rewardId))).thenReturn(Optional.empty())
+
+        assertThatThrownBy {
+            eventQueryService.getAllEntryInfoByReward(eventId, rewardId)
+        }.isInstanceOf(EventException::class.java)
+
+        verify(lockRepository).lockWithTimeout(eq("global"))
+        verify(rewardRepository).findById(eq(rewardId))
+        verify(eventEntryRepository, never()).findRewardEntrySummary(
+            any<Long>(),
+            any<EntryStatus>(),
+            any<EntryStatus>()
+        )
+    }
+
+    @Test
+    @DisplayName("유저 응모 내역 반환")
+    fun `사용자 응모 이력 조회시 정상 조회 검증`() {
+        val t1 = Instant.parse("2025-08-01T10:00:00Z")
+        val t2 = Instant.parse("2025-08-02T11:00:00Z")
+
+        val d1 = UserEntryDetail(
+            eventName = "이벤트",
+            rewardName = "1일 휴가권",
+            status = "ENTERED",
+            createTime = t1,
+            updateTime = t1
+        )
+        val d2 = UserEntryDetail(
+            eventName = "이벤트",
+            rewardName = "1일 휴가권",
+            status = "CANCELLED",
+            createTime = t2,
+            updateTime = t2
+        )
+
+        whenever(eventEntryRepository.findUserEntryDetails(eq(rewardId), eq(userId))).thenReturn(listOf(d1, d2))
+
+        val result: UserEntryDto = eventQueryService.getUserEntryInfo(eventId, rewardId, userId)
+
+        assertThat(result.userId).isEqualTo(userId)
+        assertThat(result.entries).hasSize(2)
+
+        verify(lockRepository).lockWithTimeout(eq("global"))
+        verify(rewardRepository).findById(eq(rewardId))
+        verify(eventEntryRepository).findUserEntryDetails(eq(rewardId), eq(userId))
+    }
+
+    @Test
+    @DisplayName("조회 되는 리워드(휴가권) 없음 → EventException")
+    fun `조회 요청한 리워드(휴가권)이 없는 경우 실패 검증(유저 응모 이력 확인시)`() {
+        whenever(rewardRepository.findById(eq(rewardId))).thenReturn(Optional.empty())
+
+        assertThatThrownBy {
+            eventQueryService.getUserEntryInfo(eventId, rewardId, userId)
+        }.isInstanceOf(EventException::class.java)
+
+        verify(lockRepository).lockWithTimeout(eq("global"))
+        verify(eventEntryRepository, never()).findUserEntryDetails(any(), any())
     }
 
     private fun setId(entity: Any, value: Long) {

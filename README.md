@@ -101,7 +101,10 @@ Content-Type: application/json
 **Response**
 
 ```json
-{ "status": "OK", "data": true }
+{
+  "status": "OK",
+  "data": true
+}
 ```
 
 ---
@@ -122,7 +125,11 @@ GET /v1/coins/summary/{coinId}
   "data": {
     "remainCoinCount": 900,
     "userCoinInfo": [
-      { "userId": "jksim", "acquiredTotal": 2, "balance": 1 }
+      {
+        "userId": "jksim",
+        "acquiredTotal": 2,
+        "balance": 1
+      }
     ]
   }
 }
@@ -143,7 +150,11 @@ GET /v1/coins/summary/{coinId}/{userId}
 ```json
 {
   "status": "OK",
-  "data": { "userId":"jksim", "acquiredTotal":2, "balance":1 }
+  "data": {
+    "userId": "jksim",
+    "acquiredTotal": 2,
+    "balance": 1
+  }
 }
 ```
 
@@ -160,7 +171,10 @@ POST /v1/event/entry-reward/{eventId}/{rewardId}/{userId}?status=ENTERED|CANCELL
 **Response**
 
 ```json
-{ "status":"OK", "data": true }
+{
+  "status": "OK",
+  "data": true
+}
 ```
 
 ---
@@ -176,7 +190,15 @@ GET /v1/event/reward-entry-summary/{eventId}/{rewardId}
 **Response (예시)**
 
 ```json
-{ "status":"OK", "data": { "rewardName":"1일 휴가권", "entryCount":1 } }
+{
+  "status": "OK",
+  "data": {
+    "rewardName": "1일 휴가권",
+    "totalEntryCount": 1,
+    "canceledCount": 0,
+    "uniqueEntryCount": 1
+  }
+}
 ```
 
 ---
@@ -193,16 +215,16 @@ GET /v1/event/user-reward-entry-summary/{eventId}/{rewardId}/{userId}
 
 ```json
 {
-  "status":"OK",
-  "data":{
-    "userId":"1001",
-    "entries":[
+  "status": "OK",
+  "data": {
+    "userId": "1001",
+    "entries": [
       {
-        "eventName":"2025 여름휴가 이벤트",
-        "rewardName":"1일 휴가권",
-        "status":"ENTERED",
-        "createTime":"2025-08-01T00:00:00Z",
-        "updateTime":"2025-08-01T00:00:00Z"
+        "eventName": "2025 여름휴가 이벤트",
+        "rewardName": "1일 휴가권",
+        "status": "ENTERED",
+        "createTime": "2025-08-01T00:00:00Z",
+        "updateTime": "2025-08-01T00:00:00Z"
       }
     ]
   }

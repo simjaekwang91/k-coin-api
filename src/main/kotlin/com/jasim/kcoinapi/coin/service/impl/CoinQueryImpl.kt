@@ -40,6 +40,6 @@ class CoinQueryImpl(
             ?: throw DBException(DBErrorType.LOCK_EXCEPTION)
 
         return userCoinRepository.findUserCoinSummary(userId, coinId)
-            ?: throw CoinException(CoinErrorType.NOT_EXIST_COIN)
+            ?: throw CoinException(CoinErrorType.NOT_FOUND_USER_COIN)
     }
 }
